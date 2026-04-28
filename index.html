@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Kopfrechentest</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&family=Baloo+2:wght@400;600;800&display=swap');
+
+    :root {
+      --primary: #2563eb;
+      --primary-light: #dbeafe;
+      --primary-dark: #1d4ed8;
+      --success: #16a34a;
+      --success-light: #dcfce7;
+      --danger: #dc2626;
+      --danger-light: #fee2e2;
+      --warning: #d97706;
+      --warning-light: #fef3c7;
+      --bg: #f0f4ff;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 16px;
+      --shadow: 0 4px 24px rgba(37,99,235,0.10);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ===== SCREENS ===== */
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; gap: 20px; }
+    .screen.top { justify-content: flex-start; padding-top: 20px; }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      width: 100%;
+    }
+
+    /* ===== TYPOGRAPHY ===== */
+    h1 { font-family: 'Baloo 2', sans-serif; font-size: 2rem; font-weight: 800; color: var(--primary); }
+    h2 { font-family: 'Baloo 2', sans-serif; font-size: 1.3rem; font-weight: 700; margin-bottom: 16px; }
+    h3 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; }
+    p { color: var(--muted); line-height: 1.6; }
+    label { font-weight: 700; font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 4px; }
+
+    /* ===== INPUTS ===== */
+    input[type="text"], input[type="number"], input[type="password"], textarea, select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bg);
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); background: white; }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px 24px; border-radius: 10px;
+      font-family: 'Nunito', sans-serif; font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; border: none; transition: all 0.2s; width: 100%;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover:not(:disabled) { background: #15803d; transform: translateY(-1px); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover:not(:disabled) { background: #b91c1c; transform: translateY(-1px); }
+    .btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); }
+    .btn-outline:hover:not(:disabled) { background: var(--primary-light); }
+    .btn-ghost { background: transparent; color: var(--muted); border: 2px solid var(--border); }
+    .btn-ghost:hover:not(:disabled) { background: var(--bg); }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn-sm { padding: 8px 14px; font-size: 0.82rem; border-radius: 8px; width: auto; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+
+    /* ===== ALERTS ===== */
+    .alert { padding: 12px 16px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; margin-top: 8px; }
+    .alert-success { background: var(--success-light); color: var(--success); }
+    .alert-danger { background: var(--danger-light); color: var(--danger); }
+    .alert-info { background: var(--primary-light); color: var(--primary); }
+    .alert-warning { background: var(--warning-light); color: var(--warning); }
+
+    /* ===== BADGES ===== */
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
+    .badge-waiting { background: var(--warning-light); color: var(--warning); }
+    .badge-active { background: var(--success-light); color: var(--success); }
+    .badge-closed { background: var(--border); color: var(--muted); }
+
+    /* ===== STATUS DOT ===== */
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+    .dot-active { background: var(--success); animation: pulse 1.5s infinite; }
+    .dot-waiting { background: var(--warning); }
+    .dot-closed { background: var(--muted); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ===== GRID ===== */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .flex-row { display: flex; gap: 10px; align-items: center; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    .gap-8 { gap: 8px; }
+    .gap-12 { gap: 12px; }
+    .mt-8 { margin-top: 8px; }
+    .mt-12 { margin-top: 12px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-20 { margin-top: 20px; }
+
+    /* ===== STARTSEITE - KLASSEN KACHELN ===== */
+    .klassen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .klasse-kachel {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 3px solid transparent;
+      font-family: 'Baloo 2', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .klasse-kachel:hover { border-color: var(--primary); transform: translateY(-2px); }
+    .klasse-kachel .kachel-icon { font-size: 2rem; margin-bottom: 8px; }
+
+    /* ===== NUMMERN RASTER ===== */
+    .nummern-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .nummer-btn {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      border: none;
+      font-family: 'Baloo 2', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+    .nummer-btn:hover:not(:disabled) { background: var(--primary); color: white; transform: scale(1.05); }
+    .nummer-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; opacity: 0.5; }
+
+    /* ===== AUFGABE ===== */
+    .aufgabe-box {
+      background: linear-gradient(135deg, var(--primary-light), #ede9fe);
+      border-radius: var(--radius);
+      padding: 36px 24px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .aufgabe-text {
+      font-family: 'Baloo 2', sans-serif;
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--primary);
+    }
+    .antwort-input {
+      font-size: 1.6rem !important;
+      font-weight: 800 !important;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+
+    /* ===== FORTSCHRITT ===== */
+    .fortschritt-bar { height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; }
+    .fortschritt-fill { height: 100%; background: var(--primary); border-radius: 999px; transition: width 0.3s; }
+
+    /* ===== ERGEBNIS ===== */
+    .ergebnis-zahl {
+      font-family: 'Baloo 2', sans-serif;
+      font-size: 5rem;
+      font-weight: 900;
+      color: var(--primary);
+      text-align: center;
+      line-height: 1;
+    }
+    .bestleistung-banner {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b);
+      color: white; border-radius: 12px; padding: 16px;
+      text-align: center; font-weight: 700; font-size: 1.1rem;
+    }
+
+    /* ===== WARTE ANIMATION ===== */
+    .warte-animation { display: flex; gap: 8px; justify-content: center; margin: 20px 0; }
+    .warte-dot { width: 12px; height: 12px; background: var(--primary); border-radius: 50%; animation: bounce 1.2s infinite; }
+    .warte-dot:nth-child(2) { animation-delay: 0.2s; }
+    .warte-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%,80%,100%{transform:scale(0.8);opacity:0.5} 40%{transform:scale(1.2);opacity:1} }
+
+    /* ===== LEHRER TABS ===== */
+    .tabs { display: flex; gap: 4px; background: var(--bg); padding: 4px; border-radius: 12px; width: 100%; flex-wrap: wrap; }
+    .tab { flex: 1; min-width: 80px; padding: 9px 6px; text-align: center; border-radius: 9px; font-weight: 700; cursor: pointer; font-size: 0.82rem; color: var(--muted); transition: all 0.2s; border: none; background: transparent; font-family: 'Nunito', sans-serif; }
+    .tab.active { background: white; color: var(--primary); box-shadow: var(--shadow); }
+    .tab-content { display: none; width: 100%; }
+    .tab-content.active { display: block; }
+
+    /* ===== TABELLEN ===== */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th { background: var(--bg); padding: 10px 12px; text-align: left; font-weight: 700; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg); }
+    .richtig { color: var(--success); font-weight: 700; }
+    .nicht-teilgenommen { color: var(--muted); font-style: italic; }
+
+    /* ===== AUFGABENLISTE ===== */
+    .aufgaben-list { display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; }
+    .aufgabe-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bg); border-radius: 9px; }
+    .aufgabe-nr { color: var(--muted); font-size: 0.78rem; min-width: 26px; }
+    .aufgabe-loesung { color: var(--success); font-size: 0.82rem; font-weight: 700; }
+    .btn-delete { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 0.9rem; padding: 4px 6px; border-radius: 6px; }
+    .btn-delete:hover { background: var(--danger-light); }
+
+    /* ===== KINDER VERWALTUNG ===== */
+    .kind-chip {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 48px; height: 48px; border-radius: 10px;
+      font-family: 'Baloo 2', sans-serif; font-size: 1.1rem; font-weight: 800;
+      cursor: pointer; border: 2px solid transparent; transition: all 0.15s;
+    }
+    .kind-chip.aktiv { background: var(--primary-light); color: var(--primary); }
+    .kind-chip.aktiv:hover { border-color: var(--primary); }
+    .kind-chip.inaktiv { background: var(--border); color: var(--muted); opacity: 0.5; }
+    .kind-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    /* ===== LOADING ===== */
+    .loading { text-align: center; padding: 32px; color: var(--muted); font-weight: 600; }
+
+    /* ===== SCHLOSS BUTTON ===== */
+    .schloss-btn {
+      position: fixed; bottom: 20px; right: 20px;
+      background: rgba(255,255,255,0.8); border: none;
+      border-radius: 50%; width: 44px; height: 44px;
+      font-size: 1.2rem; cursor: pointer; box-shadow: var(--shadow);
+      transition: all 0.2s; backdrop-filter: blur(4px);
+    }
+    .schloss-btn:hover { background: white; transform: scale(1.1); }
+
+    /* ===== DIVIDER ===== */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    /* ===== INFO BOX ===== */
+    .info-box { background: var(--primary-light); border-radius: 10px; padding: 14px; font-size: 0.88rem; color: var(--primary); font-weight: 600; }
+
+    /* ===== CHART CONTAINER ===== */
+    .chart-container { position: relative; height: 280px; margin-top: 12px; }
+
+    /* ===== SKIP INFO ===== */
+    .skip-badge { display: inline-block; background: var(--warning-light); color: var(--warning); border-radius: 999px; padding: 2px 10px; font-size: 0.8rem; font-weight: 700; }
+
+    /* ===== LEHRER HEADER ===== */
+    .lehrer-header {
+      display: flex; justify-content: space-between; align-items: center;
+      width: 100%; padding: 16px 20px;
+      background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      position: sticky; top: 0; z-index: 100;
+    }
+
+    /* ===== MAX WIDTH WRAPPER ===== */
+    .mw { width: 100%; max-width: 780px; margin: 0 auto; }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 200;
+      overflow-y: auto; padding: 20px;
+    }
+    .modal-overlay.active { display: block; }
+    .modal-box {
+      background: white; max-width: 560px; margin: 0 auto;
+      border-radius: var(--radius); padding: 28px;
+    }
+
+    @media (max-width: 600px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .aufgabe-text { font-size: 2.4rem; }
+      .ergebnis-zahl { font-size: 3.5rem; }
+      .nummern-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    @media print {
+      body > *:not(#modal-druck) { display: none !important; }
+      #modal-druck { position: static !important; background: none !important; padding: 0 !important; display: block !important; }
+      #modal-druck .modal-box { box-shadow: none !important; padding: 0 !important; max-width: none !important; }
+      .no-print { display: none !important; }
+      .elternzettel { page-break-after: always; width: 148mm; padding: 10mm; box-sizing: border-box; }
+      .qr-druck-page { page-break-after: always; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== SCREEN: STARTSEITE ===== -->
+<div id="screen-start" class="screen active">
+  <div style="text-align:center">
+    <div style="font-size:3rem">🧮</div>
+    <h1>Kopfrechentest</h1>
+    <p style="margin-top:4px">Wähle deine Klasse</p>
+  </div>
+  <div id="klassen-grid" class="klassen-grid">
+    <div class="loading">Lade Klassen...</div>
+  </div>
+  <button class="schloss-btn" onclick="zeige('screen-lehrer-login')" title="Lehrkraft-Zugang">🔒</button>
+</div>
+
+<!-- ===== SCREEN: KIND - NUMMER WÄHLEN ===== -->
+<div id="screen-kind-nummer" class="screen">
+  <div style="text-align:center;width:100%;max-width:500px">
+    <div style="font-size:2rem">🧮</div>
+    <h1 id="nummer-klasse-name" style="font-size:1.6rem"></h1>
+    <p style="margin-top:4px">Wähle deine Nummer</p>
+  </div>
+  <div class="card" style="width:100%;max-width:500px">
+    <div id="nummern-raster" class="nummern-grid"></div>
+  </div>
+  <button class="btn btn-ghost btn-sm" onclick="zurueckZuKlassen()">← Zurück</button>
+</div>
+
+<!-- ===== SCREEN: KIND - WARTEN ===== -->
+<div id="screen-kind-warten" class="screen">
+  <div class="card" style="text-align:center;max-width:440px;width:100%">
+    <div style="font-size:2.5rem">⏳</div>
+    <h2>Hallo, Nr. <span id="warte-nummer"></span>!</h2>
+    <p>Warte bis deine Lehrkraft den Test startet...</p>
+    <div class="warte-animation">
+      <div class="warte-dot"></div>
+      <div class="warte-dot"></div>
+      <div class="warte-dot"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: KIND - TEST ===== -->
+<div id="screen-kind-test" class="screen" style="justify-content:flex-start;padding-top:16px">
+  <div style="width:100%;max-width:480px">
+    <div class="flex-between" style="margin-bottom:10px;padding:0 4px">
+      <span style="font-weight:700;color:var(--muted)">Nr. <span id="test-nummer"></span></span>
+      <span id="aufgaben-zaehler" style="font-weight:700;color:var(--primary)"></span>
+    </div>
+    <div class="fortschritt-bar" style="margin-bottom:8px">
+      <div class="fortschritt-fill" id="fortschritt-fill" style="width:0%"></div>
+    </div>
+    <div id="skip-hinweis" style="text-align:center;font-size:0.82rem;color:var(--muted);min-height:20px;margin-bottom:8px"></div>
+  </div>
+  <div class="card" style="width:100%;max-width:480px">
+    <div class="aufgabe-box">
+      <div class="aufgabe-text" id="aufgabe-anzeige"></div>
+    </div>
+    <input type="number" class="antwort-input" id="antwort-input"
+      placeholder="?" inputmode="numeric"
+      onkeydown="if(event.key==='Enter')antwortBestaetigen()">
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="antwortBestaetigen()">✓ Bestätigen (Enter)</button>
+      <button class="btn btn-outline" onclick="aufgabeUeberspringen()">⏭ Überspringen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: KIND - FERTIG ===== -->
+<div id="screen-kind-fertig" class="screen">
+  <div style="font-size:3rem">🎉</div>
+  <div class="card" style="text-align:center;max-width:440px;width:100%">
+    <h2>Test beendet!</h2>
+    <div class="ergebnis-zahl" id="ergebnis-zahl"></div>
+    <p style="font-size:1.1rem;margin:8px 0">von 100 Aufgaben richtig</p>
+    <div id="bestleistung-info" style="margin-top:16px"></div>
+  </div>
+  <div class="card" style="text-align:center;max-width:440px;width:100%">
+    <p style="color:var(--muted)">Warte auf deine Lehrkraft. 😊</p>
+  </div>
+</div>
+
+<!-- ===== SCREEN: LEHRER LOGIN ===== -->
+<div id="screen-lehrer-login" class="screen">
+  <div style="font-size:2.5rem">👩‍🏫</div>
+  <div class="card" style="max-width:380px;width:100%">
+    <h2>Lehrkraft-Zugang</h2>
+    <input type="password" id="pw-input" placeholder="Passwort"
+      onkeydown="if(event.key==='Enter')lehrerLogin()">
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="lehrerLogin()">Einloggen</button>
+      <button class="btn btn-ghost" onclick="zeige('screen-start')">← Zurück</button>
+    </div>
+    <div id="login-fehler"></div>
+  </div>
+</div>
+
+<!-- ===== SCREEN: LEHRER DASHBOARD ===== -->
+<div id="screen-lehrer" class="screen top" style="padding:0;gap:0">
+  <div class="lehrer-header">
+    <div style="font-family:'Baloo 2',sans-serif;font-size:1.2rem;font-weight:800;color:var(--primary)">🧮 Lehrkraft</div>
+    <button class="btn btn-ghost btn-sm" onclick="lehrerLogout()">Abmelden</button>
+  </div>
+
+  <div class="mw" style="padding:16px">
+    <!-- Status Karte -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="flex-between" style="flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-weight:700;font-size:1.05rem" id="test-status-text">Kein aktiver Test</div>
+          <div id="test-status-badge" style="margin-top:4px"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-success btn-sm" id="btn-freigeben" onclick="testFreigeben()" disabled>⏸ Freigeben</button>
+          <button class="btn btn-primary btn-sm" id="btn-start" onclick="testStarten()" disabled>▶ Starten</button>
+          <button class="btn btn-danger btn-sm" id="btn-stop" onclick="testStoppen()" disabled>⏹ Beenden</button>
+        </div>
+      </div>
+      <div id="teilnehmer-info" style="margin-top:10px;font-size:0.88rem;color:var(--muted)"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" style="margin-bottom:16px">
+      <button class="tab active" onclick="tabWechsel('tab-verwaltung',this)">⚙️ Verwaltung</button>
+      <button class="tab" onclick="tabWechsel('tab-aufgaben',this)">📝 Aufgaben</button>
+      <button class="tab" onclick="tabWechsel('tab-test',this)">🚀 Test</button>
+      <button class="tab" onclick="tabWechsel('tab-ergebnisse',this)">📊 Ergebnisse</button>
+      <button class="tab" onclick="tabWechsel('tab-auswertung',this)">📈 Auswertung</button>
+    </div>
+
+    <!-- TAB: VERWALTUNG -->
+    <div id="tab-verwaltung" class="tab-content active">
+
+      <!-- Schuljahre -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="flex-between" style="margin-bottom:14px">
+          <h2 style="margin:0">🗓 Schuljahre</h2>
+          <button class="btn btn-primary btn-sm" onclick="modalOeffnen('modal-schuljahr')">+ Neu</button>
+        </div>
+        <div id="schuljahre-liste"><div class="loading">Lade...</div></div>
+      </div>
+
+      <!-- Klassen -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="flex-between" style="margin-bottom:14px">
+          <h2 style="margin:0">🏫 Klassen</h2>
+          <button class="btn btn-primary btn-sm" onclick="modalOeffnen('modal-klasse')">+ Neu</button>
+        </div>
+        <div id="klassen-liste-lehrer"><div class="loading">Lade...</div></div>
+      </div>
+
+      <!-- Kinder -->
+      <div class="card">
+        <div class="flex-between" style="margin-bottom:14px">
+          <h2 style="margin:0">👦 Kinder</h2>
+          <select id="kinder-klasse-select" onchange="kinderLaden()" style="width:auto">
+            <option value="">Klasse wählen...</option>
+          </select>
+        </div>
+        <div id="kinder-verwaltung"><div class="info-box">Bitte eine Klasse auswählen.</div></div>
+      </div>
+    </div>
+
+    <!-- TAB: AUFGABEN -->
+    <div id="tab-aufgaben" class="tab-content">
+      <div class="card" style="margin-bottom:16px">
+        <h2>📋 Testreihen</h2>
+        <div class="flex-row" style="margin-bottom:12px">
+          <select id="testreihe-klasse-select" onchange="testreihenLaden()" style="flex:1">
+            <option value="">Klasse wählen...</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="modalOeffnen('modal-testreihe')">+ Neue Testreihe</button>
+        </div>
+        <div id="testreihen-liste"><div class="info-box">Bitte eine Klasse wählen.</div></div>
+      </div>
+
+      <div class="card" id="aufgaben-karte" style="display:none">
+        <div class="flex-between" style="margin-bottom:6px">
+          <h2 style="margin:0">Aufgaben für: <span id="aktuelle-testreihe-name" style="color:var(--primary)"></span></h2>
+        </div>
+
+        <!-- Paste Import -->
+        <div style="margin-bottom:20px">
+          <h3>📋 Aufgaben einfügen</h3>
+          <p style="font-size:0.85rem;margin-bottom:10px">
+            Erstelle Aufgaben mit ChatGPT oder Claude.ai und füge sie hier ein. Eine Aufgabe pro Zeile.
+            Die App berechnet Lösungen automatisch.<br>
+            <strong style="color:var(--text)">Formate:</strong> 17 + 8 &nbsp;|&nbsp; 34 - 19 &nbsp;|&nbsp; 6 × 7 &nbsp;|&nbsp; 48 ÷ 6 &nbsp;|&nbsp; 17 + 8 = 25
+          </p>
+          <textarea id="paste-aufgaben" rows="6" placeholder="17 + 8&#10;34 - 19&#10;6 × 7&#10;48 ÷ 6&#10;..."></textarea>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="aufgabenEinfuegen()">📋 Übernehmen</button>
+            <button class="btn btn-ghost btn-sm" onclick="alleAufgabenLoeschen()">🗑 Alle löschen</button>
+          </div>
+          <div id="paste-status"></div>
+        </div>
+
+        <!-- Manuell -->
+        <hr class="divider">
+        <h3>✏️ Manuell hinzufügen</h3>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="neue-aufgabe" placeholder="z.B. 17 + 8" style="flex:1" onkeydown="if(event.key==='Enter')aufgabeHinzufuegen()">
+          <input type="number" id="neue-loesung" placeholder="= ?" style="width:90px" onkeydown="if(event.key==='Enter')aufgabeHinzufuegen()">
+          <button class="btn btn-primary btn-sm" onclick="aufgabeHinzufuegen()">+</button>
+        </div>
+        <div id="aufgabe-fehler"></div>
+
+        <!-- Liste -->
+        <hr class="divider">
+        <div class="flex-between" style="margin-bottom:10px">
+          <h3 style="margin:0">Aufgabenliste <span id="aufgaben-anzahl" style="color:var(--primary)"></span></h3>
+          <button class="btn btn-success btn-sm" onclick="aufgabenSpeichern()" id="btn-aufgaben-speichern">💾 Speichern</button>
+        </div>
+        <div id="aufgaben-liste" class="aufgaben-list"></div>
+        <div id="aufgaben-leer" class="info-box" style="display:none">Noch keine Aufgaben.</div>
+      </div>
+    </div>
+
+    <!-- TAB: TEST -->
+    <div id="tab-test" class="tab-content">
+      <div class="card">
+        <h2>🚀 Test starten</h2>
+        <div class="grid-2" style="margin-bottom:14px">
+          <div>
+            <label>Klasse</label>
+            <select id="test-klasse-select" onchange="testTestreihenLaden()">
+              <option value="">Klasse wählen...</option>
+            </select>
+          </div>
+          <div>
+            <label>Testreihe</label>
+            <select id="test-testreihe-select">
+              <option value="">Testreihe wählen...</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="testVorbereiten()" id="btn-vorbereiten">✓ Test vorbereiten</button>
+        <div id="test-fehler"></div>
+
+        <hr class="divider">
+        <div class="info-box">
+          <strong>Ablauf:</strong> Test vorbereiten → Freigeben (Kinder können beitreten) → Starten (Timer läuft) → Beenden
+        </div>
+      </div>
+
+      <!-- QR Codes -->
+      <div class="card" style="margin-top:16px">
+        <h2>📱 QR-Codes</h2>
+        <div class="grid-2">
+          <div>
+            <label>Klasse für QR-Code</label>
+            <select id="qr-klasse-select">
+              <option value="">Klasse wählen...</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end">
+            <button class="btn btn-outline" onclick="qrCodeAnzeigen()">QR-Code anzeigen & drucken</button>
+          </div>
+        </div>
+        <div id="qr-preview" style="margin-top:16px;text-align:center"></div>
+      </div>
+    </div>
+
+    <!-- TAB: ERGEBNISSE -->
+    <div id="tab-ergebnisse" class="tab-content">
+      <div class="card">
+        <div class="flex-between" style="margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <h2 style="margin:0">📊 Ergebnisse</h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="ergebnisseAktualisieren()">↻ Aktualisieren</button>
+            <button class="btn btn-ghost btn-sm" onclick="csvExportieren()">⬇ CSV</button>
+            <button class="btn btn-outline btn-sm" onclick="ausgewaehlteElternzettelDrucken()">🖨 Auswahl drucken</button>
+            <button class="btn btn-outline btn-sm" onclick="alleElternzettelDrucken()">🖨 Alle drucken</button>
+          </div>
+        </div>
+        <div id="ergebnisse-container"><div class="loading">Lade Ergebnisse...</div></div>
+      </div>
+    </div>
+
+    <!-- TAB: AUSWERTUNG -->
+    <div id="tab-auswertung" class="tab-content">
+
+      <!-- Auswahl -->
+      <div class="card" style="margin-bottom:16px">
+        <h2>📈 Auswertung</h2>
+        <div class="grid-2">
+          <div>
+            <label>Klasse</label>
+            <select id="auswertung-klasse-select" onchange="auswertungTestreihenLaden()">
+              <option value="">Klasse wählen...</option>
+            </select>
+          </div>
+          <div>
+            <label>Testreihe</label>
+            <select id="auswertung-testreihe-select" onchange="auswertungLaden()">
+              <option value="">Testreihe wählen...</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Klassengraph -->
+      <div class="card" style="margin-bottom:16px" id="klass-graph-karte" style="display:none">
+        <h2>Klassenentwicklung</h2>
+        <div class="chart-container">
+          <canvas id="chart-klasse"></canvas>
+        </div>
+      </div>
+
+      <!-- Individualgraphen -->
+      <div id="individual-graphen"></div>
+
+      <!-- Aufgabenstatistik -->
+      <div class="card" id="aufgaben-statistik-karte" style="display:none;margin-top:16px">
+        <h2>❌ Häufig falsch beantwortet</h2>
+        <div id="aufgaben-statistik-inhalt"></div>
+      </div>
+    </div>
+
+  </div><!-- end mw -->
+</div><!-- end screen-lehrer -->
+
+<!-- ===== MODALS ===== -->
+
+<!-- Schuljahr Modal -->
+<div id="modal-schuljahr" class="modal-overlay">
+  <div class="modal-box">
+    <div class="flex-between" style="margin-bottom:16px">
+      <h2 style="margin:0">Schuljahr anlegen</h2>
+      <button class="btn btn-ghost btn-sm" onclick="modalSchliessen('modal-schuljahr')">✕</button>
+    </div>
+    <label>Name (z.B. 2024/25)</label>
+    <input type="text" id="schuljahr-name" placeholder="2024/25">
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="schuljahrAnlegen()">Anlegen</button>
+      <button class="btn btn-ghost" onclick="modalSchliessen('modal-schuljahr')">Abbrechen</button>
+    </div>
+    <div id="schuljahr-fehler"></div>
+  </div>
+</div>
+
+<!-- Klasse Modal -->
+<div id="modal-klasse" class="modal-overlay">
+  <div class="modal-box">
+    <div class="flex-between" style="margin-bottom:16px">
+      <h2 style="margin:0">Klasse anlegen</h2>
+      <button class="btn btn-ghost btn-sm" onclick="modalSchliessen('modal-klasse')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label>Schuljahr</label>
+        <select id="klasse-schuljahr-select"></select>
+      </div>
+      <div>
+        <label>Klassenname (z.B. 3a)</label>
+        <input type="text" id="klasse-name" placeholder="3a">
+      </div>
+      <div>
+        <label>Anzahl Kinder</label>
+        <input type="number" id="klasse-anzahl" placeholder="25" min="1" max="60">
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="klasseAnlegen()">Anlegen</button>
+      <button class="btn btn-ghost" onclick="modalSchliessen('modal-klasse')">Abbrechen</button>
+    </div>
+    <div id="klasse-fehler"></div>
+  </div>
+</div>
+
+<!-- Testreihe Modal -->
+<div id="modal-testreihe" class="modal-overlay">
+  <div class="modal-box">
+    <div class="flex-between" style="margin-bottom:16px">
+      <h2 style="margin:0">Testreihe anlegen</h2>
+      <button class="btn btn-ghost btn-sm" onclick="modalSchliessen('modal-testreihe')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label>Name (z.B. Addition bis 20)</label>
+        <input type="text" id="testreihe-name" placeholder="Addition bis 20">
+      </div>
+      <div>
+        <label>Zielwert (von 100)</label>
+        <input type="number" id="testreihe-zielwert" placeholder="z.B. 40" min="1" max="100">
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="testreiheAnlegen()">Anlegen</button>
+      <button class="btn btn-ghost" onclick="modalSchliessen('modal-testreihe')">Abbrechen</button>
+    </div>
+    <div id="testreihe-fehler"></div>
+  </div>
+</div>
+
+<!-- Schuljahreswechsel Modal -->
+<div id="modal-schuljahreswechsel" class="modal-overlay">
+  <div class="modal-box">
+    <div class="flex-between" style="margin-bottom:16px">
+      <h2 style="margin:0">Ins neue Schuljahr übernehmen</h2>
+      <button class="btn btn-ghost btn-sm" onclick="modalSchliessen('modal-schuljahreswechsel')">✕</button>
+    </div>
+    <p style="margin-bottom:16px">Alle Kinder dieser Klasse werden mit ihrer Leistungshistorie übernommen. Die alte Klasse wird archiviert.</p>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label>Neues Schuljahr</label>
+        <select id="wechsel-schuljahr-select"></select>
+      </div>
+      <div>
+        <label>Neuer Klassenname</label>
+        <input type="text" id="wechsel-klasse-name" placeholder="z.B. 4a">
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="schuljahreswechselDurchfuehren()">Übernehmen</button>
+      <button class="btn btn-ghost" onclick="modalSchliessen('modal-schuljahreswechsel')">Abbrechen</button>
+    </div>
+    <div id="wechsel-fehler"></div>
+  </div>
+</div>
+
+<!-- Druck Modal -->
+<div id="modal-druck" class="modal-overlay">
+  <div class="modal-box" style="max-width:700px">
+    <div class="flex-between no-print" style="margin-bottom:16px">
+      <h2 style="margin:0">Elternzettel drucken</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 Drucken</button>
+        <button class="btn btn-ghost btn-sm" onclick="modalSchliessen('modal-druck')">✕ Schließen</button>
+      </div>
+    </div>
+    <div id="druck-inhalt"></div>
+  </div>
+</div>
+
+<!-- QR Modal -->
+<div id="modal-qr" class="modal-overlay">
+  <div class="modal-box" style="text-align:center">
+    <div class="flex-between no-print" style="margin-bottom:16px">
+      <h2 style="margin:0" id="qr-modal-titel"></h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 Drucken</button>
+        <button class="btn btn-ghost btn-sm" onclick="modalSchliessen('modal-qr')">✕</button>
+      </div>
+    </div>
+    <div class="qr-druck-page">
+      <div id="qr-code-container" style="margin:0 auto;width:280px"></div>
+      <div id="qr-klasse-label" style="font-family:'Baloo 2',sans-serif;font-size:2rem;font-weight:800;color:var(--primary);margin-top:16px"></div>
+      <p style="color:var(--muted);margin-top:8px" id="qr-url-text"></p>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+// ================================================
+// KONFIGURATION
+// ================================================
+const SUPABASE_URL = 'https://emtyhpdjcjhpqnxozytv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtdHlocGRqY2pocHFueG96eXR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTIzNDIsImV4cCI6MjA5Mjc4ODM0Mn0.q2luDsZaOUYaC3Sm3AuhWT5qI4eqltKID1ARYmN8y3A';
+const LEHRER_PASSWORT = 'lehrer2024'; // BITTE ÄNDERN!
+const APP_URL = window.location.origin + window.location.pathname;
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ================================================
+// GLOBALER ZUSTAND
+// ================================================
+const state = {
+  // Kind
+  aktiveKlasse: null,
+  kindNummer: null,
+  kindId: null,
+  aktuellerTest: null,
+  kindIndex: 0,
+  kindAntworten: [],
+  uebersprungene: [],
+  subscription: null,
+  offlineQueue: [],
+
+  // Lehrer
+  alleSchuljahre: [],
+  alleKlassen: [],
+  aktuelleTestreihe: null,
+  lokaleAufgaben: [],
+  aktuellerTestLehrer: null,
+  aktuelleErgebnisse: [],
+  chartKlasse: null,
+  chartIndividual: {},
+  wechselKlasseId: null,
+};
+
+// ================================================
+// NAVIGATION
+// ================================================
+function zeige(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+}
+
+function tabWechsel(tabId, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('active');
+  if (tabId === 'tab-ergebnisse') ergebnisseAktualisieren();
+}
+
+function modalOeffnen(id) {
+  document.getElementById(id).classList.add('active');
+  if (id === 'modal-klasse') schuljahrSelectFuellen('klasse-schuljahr-select');
+  if (id === 'modal-testreihe') {
+    const klasseId = document.getElementById('testreihe-klasse-select').value;
+    if (!klasseId) { alert('Bitte zuerst eine Klasse auswählen.'); return; }
+  }
+}
+
+function modalSchliessen(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+// ================================================
+// STARTSEITE - KLASSEN LADEN
+// ================================================
+async function klassenFuerStartseiteLaden() {
+  // URL-Parameter prüfen (QR-Code)
+  const params = new URLSearchParams(window.location.search);
+  const klasseParam = params.get('klasse');
+
+  const { data: schuljahre } = await db.from('schuljahre').select('id').eq('aktiv', true);
+  if (!schuljahre || schuljahre.length === 0) {
+    document.getElementById('klassen-grid').innerHTML = '<p style="color:var(--muted);text-align:center">Noch keine Klassen vorhanden.</p>';
+    return;
+  }
+
+  const schuljahrIds = schuljahre.map(s => s.id);
+  const { data: klassen } = await db.from('klassen').select('*').in('schuljahr_id', schuljahrIds).eq('archiviert', false).order('name');
+
+  if (!klassen || klassen.length === 0) {
+    document.getElementById('klassen-grid').innerHTML = '<p style="color:var(--muted);text-align:center">Noch keine Klassen vorhanden.</p>';
+    return;
+  }
+
+  state.alleKlassen = klassen;
+
+  // QR-Code direkt zur Klasse
+  if (klasseParam) {
+    const gefunden = klassen.find(k => k.name.toLowerCase() === klasseParam.toLowerCase());
+    if (gefunden) { klasseWaehlen(gefunden); return; }
+  }
+
+  const emojis = ['🦁','🐯','🦊','🐻','🐼','🦄','🐸','🐧','🦋','🌟'];
+  document.getElementById('klassen-grid').innerHTML = klassen.map((k, i) => `
+    <div class="klasse-kachel" onclick="klasseWaehlen(${JSON.stringify(k).replace(/"/g, '&quot;')})">
+      <div class="kachel-icon">${emojis[i % emojis.length]}</div>
+      ${k.name}
+    </div>
+  `).join('');
+}
+
+async function klasseWaehlen(klasse) {
+  state.aktiveKlasse = klasse;
+  document.getElementById('nummer-klasse-name').textContent = `Klasse ${klasse.name}`;
+
+  // Kinder laden
+  const { data: kinder } = await db.from('kinder').select('*').eq('klasse_id', klasse.id).order('nummer');
+  if (!kinder || kinder.length === 0) {
+    alert('Diese Klasse hat noch keine Kinder.');
+    return;
+  }
+
+  const maxNr = Math.max(...kinder.map(k => k.nummer));
+  let html = '';
+  for (let i = 1; i <= maxNr; i++) {
+    const kind = kinder.find(k => k.nummer === i);
+    if (kind && kind.aktiv) {
+      html += `<button class="nummer-btn" onclick="nummerWaehlen('${kind.id}', ${kind.nummer})">${i}</button>`;
+    } else {
+      html += `<button class="nummer-btn" disabled>${i}</button>`;
+    }
+  }
+
+  document.getElementById('nummern-raster').innerHTML = html;
+  zeige('screen-kind-nummer');
+}
+
+function zurueckZuKlassen() {
+  state.aktiveKlasse = null;
+  zeige('screen-start');
+}
+
+// ================================================
+// KIND - FLOW
+// ================================================
+async function nummerWaehlen(kindId, nummer) {
+  state.kindId = kindId;
+  state.kindNummer = nummer;
+
+  // Aktiven Test für diese Klasse suchen
+  const { data: tests } = await db
+    .from('tests')
+    .select('*, testreihen(aufgaben)')
+    .eq('klasse_id', state.aktiveKlasse.id)
+    .in('status', ['waiting', 'active'])
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (tests && tests.length > 0) {
+    state.aktuellerTest = tests[0];
+  }
+
+  document.getElementById('warte-nummer').textContent = nummer;
+  zeige('screen-kind-warten');
+
+  if (state.aktuellerTest?.status === 'active') {
+    testBeginnen();
+    return;
+  }
+
+  // Realtime warten
+  if (state.subscription) state.subscription.unsubscribe();
+  state.subscription = db.channel(`test-kind-${kindId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tests' }, (payload) => {
+      if (payload.new.klasse_id !== state.aktiveKlasse.id) return;
+      state.aktuellerTest = { ...payload.new, testreihen: state.aktuellerTest?.testreihen };
+      if (payload.new.status === 'active') testBeginnen();
+    })
+    .subscribe();
+}
+
+async function testBeginnen() {
+  if (!state.aktuellerTest) return;
+
+  // Aufgaben laden
+  let aufgaben = state.aktuellerTest.testreihen?.aufgaben;
+  if (!aufgaben) {
+    const { data: tr } = await db.from('testreihen').select('aufgaben').eq('id', state.aktuellerTest.testreihe_id).single();
+    aufgaben = tr?.aufgaben || [];
+  }
+  state.aktuellerTest.aufgaben = aufgaben;
+
+  state.kindIndex = 0;
+  state.kindAntworten = aufgaben.map(() => ({ eingabe: null, richtig: false }));
+  state.uebersprungene = [];
+
+  zeige('screen-kind-test');
+  document.getElementById('test-nummer').textContent = state.kindNummer;
+  naechsteAufgabeAnzeigen();
+
+  // Auf Test-Ende warten
+  if (state.subscription) state.subscription.unsubscribe();
+  state.subscription = db.channel(`test-ende-${state.kindId}`)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tests' }, (payload) => {
+      if (payload.new.id === state.aktuellerTest.id && payload.new.status === 'closed') {
+        testAbschliessen();
+      }
+    })
+    .subscribe();
+}
+
+function naechsteAufgabeAnzeigen() {
+  const aufgaben = state.aktuellerTest.aufgaben;
+  const idx = naechsterIndex();
+
+  if (idx === null) { testAbschliessen(); return; }
+
+  state.kindIndex = idx;
+  document.getElementById('aufgabe-anzeige').textContent = aufgaben[idx].aufgabe + ' = ?';
+
+  const bearbeitet = state.kindAntworten.filter(a => a.eingabe !== null).length;
+  document.getElementById('aufgaben-zaehler').textContent = `${bearbeitet} / ${aufgaben.length}`;
+  document.getElementById('fortschritt-fill').style.width = `${(bearbeitet / aufgaben.length) * 100}%`;
+
+  const skipAnz = state.uebersprungene.length;
+  document.getElementById('skip-hinweis').innerHTML = skipAnz > 0
+    ? `<span class="skip-badge">${skipAnz} übersprungen</span>`
+    : '';
+
+  document.getElementById('antwort-input').value = '';
+  document.getElementById('antwort-input').focus();
+}
+
+function naechsterIndex() {
+  const aufgaben = state.aktuellerTest.aufgaben;
+  for (let i = 0; i < aufgaben.length; i++) {
+    if (state.kindAntworten[i].eingabe === null && !state.uebersprungene.includes(i)) return i;
+  }
+  for (let i of state.uebersprungene) {
+    if (state.kindAntworten[i].eingabe === null) return i;
+  }
+  return null;
+}
+
+function antwortBestaetigen() {
+  const val = document.getElementById('antwort-input').value.trim();
+  if (val === '') return;
+  const aufgaben = state.aktuellerTest.aufgaben;
+  const richtig = parseInt(val) === aufgaben[state.kindIndex].loesung;
+  state.kindAntworten[state.kindIndex] = { eingabe: parseInt(val), richtig };
+  state.uebersprungene = state.uebersprungene.filter(i => i !== state.kindIndex);
+  naechsteAufgabeAnzeigen();
+}
+
+function aufgabeUeberspringen() {
+  if (!state.uebersprungene.includes(state.kindIndex)) {
+    state.uebersprungene.push(state.kindIndex);
+  }
+  naechsteAufgabeAnzeigen();
+}
+
+async function testAbschliessen() {
+  if (state.subscription) { state.subscription.unsubscribe(); state.subscription = null; }
+
+  const richtig = state.kindAntworten.filter(a => a.richtig).length;
+
+  // Offline-fähig: erst lokal speichern, dann sync versuchen
+  const ergebnisData = {
+    test_id: state.aktuellerTest.id,
+    kind_id: state.kindId,
+    kind_nummer: state.kindNummer,
+    antworten: state.kindAntworten,
+    richtig,
+    gesamt: 100,
+    abgeschlossen: true,
+  };
+
+  async function syncErgebnis() {
+    try {
+      await db.from('ergebnisse').upsert(ergebnisData, { onConflict: 'test_id,kind_id' });
+      await bestleistungAktualisieren(richtig);
+    } catch (e) {
+      // Offline: später nochmal versuchen
+      setTimeout(syncErgebnis, 3000);
+    }
+  }
+  syncErgebnis();
+
+  // Anzeige
+  zeige('screen-kind-fertig');
+  document.getElementById('ergebnis-zahl').textContent = richtig;
+
+  const { data: best } = await db.from('bestleistungen')
+    .select('*').eq('kind_id', state.kindId).eq('testreihe_id', state.aktuellerTest.testreihe_id).single().catch(() => ({ data: null }));
+
+  const bestInfo = document.getElementById('bestleistung-info');
+  const istBestleistung = !best || richtig > best.bestes_ergebnis;
+  if (istBestleistung) {
+    bestInfo.innerHTML = '<div class="bestleistung-banner">🌟 Neue persönliche Bestleistung! Super!</div>';
+  } else if (best) {
+    bestInfo.innerHTML = `<div class="alert alert-info">Deine Bestleistung: ${best.bestes_ergebnis} ⭐</div>`;
+  }
+}
+
+async function bestleistungAktualisieren(richtig) {
+  const { data: best } = await db.from('bestleistungen')
+    .select('*').eq('kind_id', state.kindId).eq('testreihe_id', state.aktuellerTest.testreihe_id)
+    .single().catch(() => ({ data: null }));
+
+  if (!best) {
+    await db.from('bestleistungen').insert({
+      kind_id: state.kindId,
+      testreihe_id: state.aktuellerTest.testreihe_id,
+      erstes_ergebnis: richtig,
+      bestes_ergebnis: richtig,
+      anzahl_tests: 1,
+    });
+  } else {
+    await db.from('bestleistungen').update({
+      bestes_ergebnis: Math.max(best.bestes_ergebnis, richtig),
+      anzahl_tests: best.anzahl_tests + 1,
+      updated_at: new Date().toISOString(),
+    }).eq('id', best.id);
+  }
+}
+
+// ================================================
+// LEHRER - LOGIN
+// ================================================
+function lehrerLogin() {
+  const pw = document.getElementById('pw-input').value;
+  if (pw === LEHRER_PASSWORT) {
+    zeige('screen-lehrer');
+    lehrerDashboardLaden();
+  } else {
+    document.getElementById('login-fehler').innerHTML = '<div class="alert alert-danger">Falsches Passwort.</div>';
+  }
+}
+
+function lehrerLogout() {
+  document.getElementById('pw-input').value = '';
+  zeige('screen-start');
+}
+
+// ================================================
+// LEHRER - DASHBOARD LADEN
+// ================================================
+async function lehrerDashboardLaden() {
+  await schuljahreLaden();
+  await klassenLaden();
+  await aktivenTestLaden();
+  klassenSelectsFuellen();
+}
+
+async function schuljahreLaden() {
+  const { data } = await db.from('schuljahre').select('*').order('name', { ascending: false });
+  state.alleSchuljahre = data || [];
+  renderSchuljahre();
+}
+
+function renderSchuljahre() {
+  const el = document.getElementById('schuljahre-liste');
+  if (!state.alleSchuljahre.length) {
+    el.innerHTML = '<div class="info-box">Noch keine Schuljahre angelegt.</div>';
+    return;
+  }
+  el.innerHTML = `<table><thead><tr><th>Name</th><th>Status</th><th></th></tr></thead><tbody>
+    ${state.alleSchuljahre.map(s => `
+      <tr>
+        <td><strong>${s.name}</strong></td>
+        <td>${s.aktiv ? '<span class="badge badge-active">Aktiv</span>' : '<span class="badge badge-closed">Archiviert</span>'}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="schuljahrToggle('${s.id}',${s.aktiv})">${s.aktiv ? 'Archivieren' : 'Aktivieren'}</button></td>
+      </tr>
+    `).join('')}
+  </tbody></table>`;
+}
+
+async function klassenLaden() {
+  const { data } = await db.from('klassen').select('*, schuljahre(name)').order('name');
+  state.alleKlassen = data || [];
+  renderKlassen();
+}
+
+function renderKlassen() {
+  const el = document.getElementById('klassen-liste-lehrer');
+  const aktive = state.alleKlassen.filter(k => !k.archiviert);
+  const archiviert = state.alleKlassen.filter(k => k.archiviert);
+
+  if (!aktive.length && !archiviert.length) {
+    el.innerHTML = '<div class="info-box">Noch keine Klassen angelegt.</div>';
+    return;
+  }
+
+  el.innerHTML = `<table><thead><tr><th>Klasse</th><th>Schuljahr</th><th>Status</th><th></th></tr></thead><tbody>
+    ${[...aktive, ...archiviert].map(k => `
+      <tr>
+        <td><strong>${k.name}</strong></td>
+        <td>${k.schuljahre?.name || '–'}</td>
+        <td>${k.archiviert ? '<span class="badge badge-closed">Archiviert</span>' : '<span class="badge badge-active">Aktiv</span>'}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          ${!k.archiviert ? `<button class="btn btn-outline btn-sm" onclick="schuljahreswechselModal('${k.id}')">→ Neues SJ</button>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="klasseToggle('${k.id}',${k.archiviert})">${k.archiviert ? 'Aktivieren' : 'Archivieren'}</button>
+        </td>
+      </tr>
+    `).join('')}
+  </tbody></table>`;
+}
+
+function klassenSelectsFuellen() {
+  const aktiveKlassen = state.alleKlassen.filter(k => !k.archiviert);
+  const selects = ['kinder-klasse-select', 'testreihe-klasse-select', 'test-klasse-select', 'qr-klasse-select', 'auswertung-klasse-select'];
+  selects.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const val = el.value;
+    el.innerHTML = '<option value="">Klasse wählen...</option>' +
+      aktiveKlassen.map(k => `<option value="${k.id}">${k.name}</option>`).join('');
+    if (val) el.value = val;
+  });
+}
+
+function schuljahrSelectFuellen(selectId) {
+  const el = document.getElementById(selectId);
+  el.innerHTML = state.alleSchuljahre.filter(s => s.aktiv).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+// ================================================
+// SCHULJAHR ANLEGEN
+// ================================================
+async function schuljahrAnlegen() {
+  const name = document.getElementById('schuljahr-name').value.trim();
+  if (!name) { document.getElementById('schuljahr-fehler').innerHTML = '<div class="alert alert-danger">Bitte einen Namen eingeben.</div>'; return; }
+  await db.from('schuljahre').insert({ name });
+  document.getElementById('schuljahr-name').value = '';
+  modalSchliessen('modal-schuljahr');
+  await schuljahreLaden();
+  klassenSelectsFuellen();
+}
+
+async function schuljahrToggle(id, aktiv) {
+  await db.from('schuljahre').update({ aktiv: !aktiv }).eq('id', id);
+  await schuljahreLaden();
+}
+
+// ================================================
+// KLASSE ANLEGEN
+// ================================================
+async function klasseAnlegen() {
+  const schuljahrId = document.getElementById('klasse-schuljahr-select').value;
+  const name = document.getElementById('klasse-name').value.trim();
+  const anzahl = parseInt(document.getElementById('klasse-anzahl').value);
+
+  if (!schuljahrId || !name || isNaN(anzahl)) {
+    document.getElementById('klasse-fehler').innerHTML = '<div class="alert alert-danger">Bitte alle Felder ausfüllen.</div>';
+    return;
+  }
+
+  const { data: klasse } = await db.from('klassen').insert({ schuljahr_id: schuljahrId, name }).select().single();
+
+  // Kinder anlegen
+  const kinderData = Array.from({ length: anzahl }, (_, i) => ({ klasse_id: klasse.id, nummer: i + 1, aktiv: true }));
+  await db.from('kinder').insert(kinderData);
+
+  document.getElementById('klasse-name').value = '';
+  document.getElementById('klasse-anzahl').value = '';
+  modalSchliessen('modal-klasse');
+  await klassenLaden();
+  klassenSelectsFuellen();
+}
+
+async function klasseToggle(id, archiviert) {
+  await db.from('klassen').update({ archiviert: !archiviert }).eq('id', id);
+  await klassenLaden();
+  klassenSelectsFuellen();
+}
+
+// ================================================
+// KINDER VERWALTEN
+// ================================================
+async function kinderLaden() {
+  const klasseId = document.getElementById('kinder-klasse-select').value;
+  const el = document.getElementById('kinder-verwaltung');
+  if (!klasseId) { el.innerHTML = '<div class="info-box">Bitte eine Klasse auswählen.</div>'; return; }
+
+  const { data: kinder } = await db.from('kinder').select('*').eq('klasse_id', klasseId).order('nummer');
+  if (!kinder || !kinder.length) { el.innerHTML = '<div class="info-box">Keine Kinder in dieser Klasse.</div>'; return; }
+
+  const maxNr = Math.max(...kinder.map(k => k.nummer));
+
+  el.innerHTML = `
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:12px">Klick auf eine Nummer um ein Kind zu aktivieren/deaktivieren. Grün = aktiv, Grau = deaktiviert.</p>
+    <div class="kind-chips" id="kind-chips-container">
+      ${Array.from({length: maxNr}, (_, i) => {
+        const kind = kinder.find(k => k.nummer === i+1);
+        if (kind) return `<div class="kind-chip ${kind.aktiv ? 'aktiv' : 'inaktiv'}" onclick="kindToggle('${kind.id}', ${kind.aktiv})" title="${kind.aktiv ? 'Deaktivieren' : 'Aktivieren'}">${i+1}</div>`;
+        return '';
+      }).join('')}
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="kindHinzufuegen('${klasseId}', ${maxNr})">+ Kind hinzufügen (Nr. ${maxNr+1})</button>
+    </div>
+    <p style="font-size:0.78rem;color:var(--muted);margin-top:8px">Aktiv: ${kinder.filter(k=>k.aktiv).length} | Gesamt: ${kinder.length}</p>
+  `;
+}
+
+async function kindToggle(id, aktiv) {
+  await db.from('kinder').update({ aktiv: !aktiv }).eq('id', id);
+  await kinderLaden();
+}
+
+async function kindHinzufuegen(klasseId, naechsteNr) {
+  await db.from('kinder').insert({ klasse_id: klasseId, nummer: naechsteNr + 1, aktiv: true });
+  await kinderLaden();
+}
+
+// ================================================
+// SCHULJAHRESWECHSEL
+// ================================================
+function schuljahreswechselModal(klasseId) {
+  state.wechselKlasseId = klasseId;
+  schuljahrSelectFuellen('wechsel-schuljahr-select');
+  modalOeffnen('modal-schuljahreswechsel');
+}
+
+async function schuljahreswechselDurchfuehren() {
+  const schuljahrId = document.getElementById('wechsel-schuljahr-select').value;
+  const neuerName = document.getElementById('wechsel-klasse-name').value.trim();
+  if (!schuljahrId || !neuerName) {
+    document.getElementById('wechsel-fehler').innerHTML = '<div class="alert alert-danger">Bitte alle Felder ausfüllen.</div>';
+    return;
+  }
+
+  // Alte Klasse archivieren
+  await db.from('klassen').update({ archiviert: true }).eq('id', state.wechselKlasseId);
+
+  // Neue Klasse anlegen
+  const { data: neueKlasse } = await db.from('klassen').insert({ schuljahr_id: schuljahrId, name: neuerName }).select().single();
+
+  // Kinder übernehmen
+  const { data: alteKinder } = await db.from('kinder').select('*').eq('klasse_id', state.wechselKlasseId);
+  if (alteKinder?.length) {
+    const neueKinder = alteKinder.map(k => ({ klasse_id: neueKlasse.id, nummer: k.nummer, aktiv: k.aktiv }));
+    const { data: inserted } = await db.from('kinder').insert(neueKinder).select();
+
+    // Bestleistungen übertragen
+    for (let i = 0; i < alteKinder.length; i++) {
+      const altKind = alteKinder[i];
+      const neuesKind = inserted?.find(n => n.nummer === altKind.nummer);
+      if (!neuesKind) continue;
+      const { data: bests } = await db.from('bestleistungen').select('*').eq('kind_id', altKind.id);
+      if (bests?.length) {
+        const neueBests = bests.map(b => ({ ...b, id: undefined, kind_id: neuesKind.id }));
+        await db.from('bestleistungen').insert(neueBests);
+      }
+    }
+  }
+
+  modalSchliessen('modal-schuljahreswechsel');
+  await klassenLaden();
+  klassenSelectsFuellen();
+  alert(`✓ Klasse erfolgreich als "${neuerName}" ins neue Schuljahr übernommen!`);
+}
+
+// ================================================
+// TESTREIHEN
+// ================================================
+async function testreihenLaden() {
+  const klasseId = document.getElementById('testreihe-klasse-select').value;
+  const el = document.getElementById('testreihen-liste');
+  if (!klasseId) { el.innerHTML = '<div class="info-box">Bitte eine Klasse wählen.</div>'; return; }
+
+  const { data } = await db.from('testreihen').select('*').eq('klasse_id', klasseId).eq('archiviert', false).order('created_at');
+
+  if (!data?.length) { el.innerHTML = '<div class="info-box">Noch keine Testreihen für diese Klasse.</div>'; return; }
+
+  el.innerHTML = `<table><thead><tr><th>Name</th><th>Zielwert</th><th>Aufgaben</th><th></th></tr></thead><tbody>
+    ${data.map(t => `
+      <tr>
+        <td><strong>${t.name}</strong></td>
+        <td>${t.zielwert} / 100</td>
+        <td>${t.aufgaben?.length || 0}</td>
+        <td><button class="btn btn-outline btn-sm" onclick="testreiheBearbeiten('${t.id}','${t.name.replace(/'/g,"\\'")}')">Aufgaben bearbeiten</button></td>
+      </tr>
+    `).join('')}
+  </tbody></table>`;
+}
+
+async function testreiheAnlegen() {
+  const klasseId = document.getElementById('testreihe-klasse-select').value;
+  const name = document.getElementById('testreihe-name').value.trim();
+  const zielwert = parseInt(document.getElementById('testreihe-zielwert').value);
+
+  if (!klasseId || !name || isNaN(zielwert)) {
+    document.getElementById('testreihe-fehler').innerHTML = '<div class="alert alert-danger">Bitte alle Felder ausfüllen.</div>';
+    return;
+  }
+
+  await db.from('testreihen').insert({ klasse_id: klasseId, name, zielwert, aufgaben: [] });
+  document.getElementById('testreihe-name').value = '';
+  document.getElementById('testreihe-zielwert').value = '';
+  modalSchliessen('modal-testreihe');
+  await testreihenLaden();
+}
+
+async function testreiheBearbeiten(id, name) {
+  const { data } = await db.from('testreihen').select('*').eq('id', id).single();
+  state.aktuelleTestreihe = data;
+  state.lokaleAufgaben = data.aufgaben ? [...data.aufgaben] : [];
+
+  document.getElementById('aktuelle-testreihe-name').textContent = name;
+  document.getElementById('aufgaben-karte').style.display = 'block';
+  aufgabenlisteAktualisieren();
+
+  // Zum Aufgaben-Tab scrollen
+  tabWechsel('tab-aufgaben', document.querySelectorAll('.tab')[1]);
+}
+
+// ================================================
+// AUFGABEN
+// ================================================
+function aufgabenEinfuegen() {
+  const text = document.getElementById('paste-aufgaben').value.trim();
+  const status = document.getElementById('paste-status');
+  if (!text) { status.innerHTML = '<div class="alert alert-danger">Bitte Aufgaben einfügen.</div>'; return; }
+
+  const zeilen = text.split('\n').map(z => z.trim().replace(/^\d+[.):\s]+/, '')).filter(z => z.length > 0);
+  const erkannt = [], fehler = [], warnungen = [];
+
+  for (const zeile of zeilen) {
+    const match = zeile.match(/^(-?\d+)\s*([+\-×\*÷:])\s*(-?\d+)(?:\s*=\s*(-?\d+))?/);
+    if (!match) { fehler.push(zeile); continue; }
+
+    const a = parseInt(match[1]), op = match[2], b = parseInt(match[3]);
+    const mitgeliefert = match[4] !== undefined ? parseInt(match[4]) : null;
+    let loesung, aufgabeText;
+
+    if (op === '+') { loesung = a + b; aufgabeText = `${a} + ${b}`; }
+    else if (op === '-') { loesung = a - b; aufgabeText = `${a} − ${b}`; }
+    else if (op === '×' || op === '*') { loesung = a * b; aufgabeText = `${a} × ${b}`; }
+    else if (op === '÷' || op === ':') {
+      if (b === 0 || a % b !== 0) { fehler.push(zeile + ' (nicht aufgehend)'); continue; }
+      loesung = a / b; aufgabeText = `${a} ÷ ${b}`;
+    }
+
+    if (mitgeliefert !== null && mitgeliefert !== loesung) {
+      warnungen.push(`${aufgabeText} (korrigiert: ${mitgeliefert}→${loesung})`);
+    }
+    erkannt.push({ aufgabe: aufgabeText, loesung });
+  }
+
+  state.lokaleAufgaben = [...state.lokaleAufgaben, ...erkannt];
+  aufgabenlisteAktualisieren();
+  document.getElementById('paste-aufgaben').value = '';
+
+  let msg = erkannt.length ? `<div class="alert alert-success">✓ ${erkannt.length} Aufgaben übernommen.</div>` : '';
+  if (warnungen.length) msg += `<div class="alert alert-warning" style="margin-top:6px">⚠ Lösungen korrigiert: ${warnungen.join(' | ')}</div>`;
+  if (fehler.length) msg += `<div class="alert alert-danger" style="margin-top:6px">✕ Nicht erkannt: ${fehler.join(', ')}</div>`;
+  status.innerHTML = msg;
+}
+
+function aufgabeHinzufuegen() {
+  const aufgabe = document.getElementById('neue-aufgabe').value.trim();
+  const loesung = parseInt(document.getElementById('neue-loesung').value);
+  const fehler = document.getElementById('aufgabe-fehler');
+  if (!aufgabe || isNaN(loesung)) { fehler.innerHTML = '<div class="alert alert-danger">Bitte Aufgabe und Lösung eingeben.</div>'; return; }
+  state.lokaleAufgaben.push({ aufgabe, loesung });
+  document.getElementById('neue-aufgabe').value = '';
+  document.getElementById('neue-loesung').value = '';
+  fehler.innerHTML = '';
+  aufgabenlisteAktualisieren();
+}
+
+function aufgabeLoeschen(idx) {
+  state.lokaleAufgaben.splice(idx, 1);
+  aufgabenlisteAktualisieren();
+}
+
+function alleAufgabenLoeschen() {
+  if (!confirm('Alle Aufgaben löschen?')) return;
+  state.lokaleAufgaben = [];
+  aufgabenlisteAktualisieren();
+}
+
+function aufgabenlisteAktualisieren() {
+  const liste = document.getElementById('aufgaben-liste');
+  const leer = document.getElementById('aufgaben-leer');
+  const anzahl = document.getElementById('aufgaben-anzahl');
+  const n = state.lokaleAufgaben.length;
+
+  anzahl.textContent = `(${n}/100)`;
+  anzahl.style.color = n === 100 ? 'var(--success)' : n > 100 ? 'var(--danger)' : 'var(--primary)';
+
+  if (!n) { liste.innerHTML = ''; leer.style.display = 'block'; return; }
+  leer.style.display = 'none';
+  liste.innerHTML = state.lokaleAufgaben.map((a, i) => `
+    <div class="aufgabe-item">
+      <span class="aufgabe-nr">${i+1}.</span>
+      <span style="flex:1;font-family:'Baloo 2',sans-serif">${a.aufgabe}</span>
+      <span class="aufgabe-loesung">= ${a.loesung}</span>
+      <button class="btn-delete" onclick="aufgabeLoeschen(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+async function aufgabenSpeichern() {
+  if (!state.aktuelleTestreihe) return;
+  if (state.lokaleAufgaben.length !== 100) {
+    if (!confirm(`Du hast ${state.lokaleAufgaben.length} Aufgaben (empfohlen: 100). Trotzdem speichern?`)) return;
+  }
+  await db.from('testreihen').update({ aufgaben: state.lokaleAufgaben }).eq('id', state.aktuelleTestreihe.id);
+  state.aktuelleTestreihe.aufgaben = state.lokaleAufgaben;
+  alert('✓ Aufgaben gespeichert!');
+}
+
+// ================================================
+// TEST VORBEREITEN / STARTEN / STOPPEN
+// ================================================
+async function testTestreihenLaden() {
+  const klasseId = document.getElementById('test-klasse-select').value;
+  const sel = document.getElementById('test-testreihe-select');
+  sel.innerHTML = '<option value="">Testreihe wählen...</option>';
+  if (!klasseId) return;
+  const { data } = await db.from('testreihen').select('*').eq('klasse_id', klasseId).eq('archiviert', false);
+  if (data) data.forEach(t => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; sel.appendChild(o); });
+}
+
+async function testVorbereiten() {
+  const klasseId = document.getElementById('test-klasse-select').value;
+  const testreiheId = document.getElementById('test-testreihe-select').value;
+  const fehler = document.getElementById('test-fehler');
+
+  if (!klasseId || !testreiheId) { fehler.innerHTML = '<div class="alert alert-danger">Bitte Klasse und Testreihe wählen.</div>'; return; }
+
+  const { data: tr } = await db.from('testreihen').select('aufgaben').eq('id', testreiheId).single();
+  if (!tr?.aufgaben?.length) { fehler.innerHTML = '<div class="alert alert-danger">Diese Testreihe hat noch keine Aufgaben.</div>'; return; }
+
+  const { data: test } = await db.from('tests').insert({ klasse_id: klasseId, testreihe_id: testreiheId, status: 'waiting' }).select().single();
+  state.aktuellerTestLehrer = test;
+  fehler.innerHTML = '';
+  statusAktualisieren();
+  alert('✓ Test vorbereitet! Kinder können jetzt beitreten.');
+}
+
+async function aktivenTestLaden() {
+  const { data } = await db.from('tests').select('*').in('status', ['waiting','active']).order('created_at', { ascending: false }).limit(1);
+  if (data?.length) state.aktuellerTestLehrer = data[0];
+  statusAktualisieren();
+
+  // Realtime für Teilnehmer
+  db.channel('lehrer-ergebnisse')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ergebnisse' }, () => {
+      teilnehmerZaehlen();
+      if (document.getElementById('tab-ergebnisse').classList.contains('active')) ergebnisseAktualisieren();
+    })
+    .subscribe();
+}
+
+function statusAktualisieren() {
+  const test = state.aktuellerTestLehrer;
+  const statusText = document.getElementById('test-status-text');
+  const statusBadge = document.getElementById('test-status-badge');
+  const btnFreigeben = document.getElementById('btn-freigeben');
+  const btnStart = document.getElementById('btn-start');
+  const btnStop = document.getElementById('btn-stop');
+
+  if (!test) {
+    statusText.textContent = 'Kein Test vorbereitet';
+    statusBadge.innerHTML = '';
+    btnFreigeben.disabled = btnStart.disabled = btnStop.disabled = true;
+    return;
+  }
+
+  const badges = {
+    waiting: '<span class="badge badge-waiting"><span class="status-dot dot-waiting"></span>Bereit – Kinder können beitreten</span>',
+    active: '<span class="badge badge-active"><span class="status-dot dot-active"></span>Test läuft</span>',
+    closed: '<span class="badge badge-closed"><span class="status-dot dot-closed"></span>Abgeschlossen</span>',
+  };
+
+  const klasse = state.alleKlassen.find(k => k.id === test.klasse_id);
+  statusText.textContent = `${klasse?.name || 'Unbekannte Klasse'} – Test vom ${new Date(test.created_at).toLocaleDateString('de-DE')}`;
+  statusBadge.innerHTML = badges[test.status] || '';
+  btnFreigeben.disabled = test.status !== 'waiting' || true; // Freigabe = waiting, aber wir zeigen nur waiting→active
+  // Vereinfacht: waiting = kann gestartet werden, active = kann gestoppt werden
+  btnFreigeben.disabled = test.status !== 'waiting';
+  btnStart.disabled = test.status !== 'waiting';
+  btnStop.disabled = test.status !== 'active';
+
+  teilnehmerZaehlen();
+}
+
+async function testFreigeben() {
+  // Freigeben = Kinder können beitreten (status bleibt waiting, aber wir zeigen es an)
+  // In unserer Logik: waiting = Kinder können beitreten
+  alert('Kinder können jetzt der App beitreten und ihre Nummer wählen. Wenn alle bereit sind, drücke "Starten".');
+}
+
+async function testStarten() {
+  if (!state.aktuellerTestLehrer) return;
+  await db.from('tests').update({ status: 'active' }).eq('id', state.aktuellerTestLehrer.id);
+  state.aktuellerTestLehrer.status = 'active';
+  statusAktualisieren();
+}
+
+async function testStoppen() {
+  if (!state.aktuellerTestLehrer) return;
+  if (!confirm('Test für alle Kinder beenden?')) return;
+  await db.from('tests').update({ status: 'closed' }).eq('id', state.aktuellerTestLehrer.id);
+  state.aktuellerTestLehrer.status = 'closed';
+  statusAktualisieren();
+  await ergebnisseAktualisieren();
+  tabWechsel('tab-ergebnisse', document.querySelectorAll('.tab')[3]);
+}
+
+async function teilnehmerZaehlen() {
+  if (!state.aktuellerTestLehrer) return;
+  const { count } = await db.from('ergebnisse').select('*', { count: 'exact', head: true }).eq('test_id', state.aktuellerTestLehrer.id);
+  document.getElementById('teilnehmer-info').textContent = count > 0 ? `${count} Kind${count !== 1 ? 'er haben' : ' hat'} den Test bereits abgeschlossen.` : '';
+}
+
+// ================================================
+// ERGEBNISSE
+// ================================================
+async function ergebnisseAktualisieren() {
+  const el = document.getElementById('ergebnisse-container');
+  if (!state.aktuellerTestLehrer) { el.innerHTML = '<div class="alert alert-info">Kein aktiver Test.</div>'; return; }
+
+  const { data: ergebnisse } = await db.from('ergebnisse').select('*').eq('test_id', state.aktuellerTestLehrer.id).order('kind_nummer');
+  const { data: kinder } = await db.from('kinder').select('*').eq('klasse_id', state.aktuellerTestLehrer.klasse_id).eq('aktiv', true).order('nummer');
+
+  if (!kinder?.length) { el.innerHTML = '<div class="alert alert-info">Keine Kinder in dieser Klasse.</div>'; return; }
+
+  state.aktuelleErgebnisse = ergebnisse || [];
+
+  // Bestleistungen laden
+  const { data: bests } = await db.from('bestleistungen').select('*').eq('testreihe_id', state.aktuellerTestLehrer.testreihe_id);
+
+  const rows = kinder.map(k => {
+    const erg = ergebnisse?.find(e => e.kind_id === k.id);
+    const best = bests?.find(b => b.kind_id === k.id);
+    const istBestleistung = erg && best && erg.richtig >= best.bestes_ergebnis;
+    return `
+      <tr>
+        <td><input type="checkbox" class="kind-checkbox" data-kind-id="${k.id}" value="${k.id}"></td>
+        <td><strong>Nr. ${k.nummer}</strong></td>
+        <td>${erg ? `<span class="richtig">${erg.richtig} / 100</span>${istBestleistung ? ' 🌟' : ''}` : '<span class="nicht-teilgenommen">– nicht teilgenommen</span>'}</td>
+        <td>${best ? best.bestes_ergebnis : '–'}</td>
+        <td>${best ? best.erstes_ergebnis : '–'}</td>
+        <td>${erg ? `<button class="btn btn-ghost btn-sm" onclick="elternzettelEinzeln('${k.id}')">🖨</button>` : ''}</td>
+      </tr>
+    `;
+  });
+
+  const mitgemacht = ergebnisse?.length || 0;
+  const schnitt = mitgemacht ? Math.round(ergebnisse.reduce((s,e) => s+e.richtig, 0) / mitgemacht) : '–';
+
+  el.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th><input type="checkbox" onclick="alleCheckboxen(this)"></th><th>Nr.</th><th>Ergebnis</th><th>Bestleistung</th><th>Erstes Erg.</th><th></th></tr></thead>
+        <tbody>${rows.join('')}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:10px;font-size:0.88rem">
+      <strong>Teilgenommen:</strong> ${mitgemacht}/${kinder.length} &nbsp;|&nbsp;
+      <strong>Ø:</strong> ${schnitt} &nbsp;|&nbsp;
+      <strong>Beste:</strong> ${mitgemacht ? Math.max(...ergebnisse.map(e=>e.richtig)) : '–'} &nbsp;|&nbsp;
+      <strong>Schlechteste:</strong> ${mitgemacht ? Math.min(...ergebnisse.map(e=>e.richtig)) : '–'}
+    </div>
+  `;
+}
+
+function alleCheckboxen(masterCb) {
+  document.querySelectorAll('.kind-checkbox').forEach(cb => cb.checked = masterCb.checked);
+}
+
+// ================================================
+// ELTERNZETTEL
+// ================================================
+async function elternzettelEinzeln(kindId) {
+  const kinder = [kindId];
+  await elternzettelDrucken(kinder);
+}
+
+async function ausgewaehlteElternzettelDrucken() {
+  const ausgewaehlt = [...document.querySelectorAll('.kind-checkbox:checked')].map(cb => cb.value);
+  if (!ausgewaehlt.length) { alert('Bitte mindestens ein Kind auswählen.'); return; }
+  await elternzettelDrucken(ausgewaehlt);
+}
+
+async function alleElternzettelDrucken() {
+  const alle = [...document.querySelectorAll('.kind-checkbox')].map(cb => cb.value);
+  await elternzettelDrucken(alle);
+}
+
+async function elternzettelDrucken(kindIds) {
+  const { data: ergebnisse } = await db.from('ergebnisse').select('*').eq('test_id', state.aktuellerTestLehrer.id).in('kind_id', kindIds);
+  const { data: bests } = await db.from('bestleistungen').select('*').in('kind_id', kindIds).eq('testreihe_id', state.aktuellerTestLehrer.testreihe_id);
+  const { data: tr } = await db.from('testreihen').select('aufgaben,name').eq('id', state.aktuellerTestLehrer.testreihe_id).single();
+  const aufgaben = tr?.aufgaben || [];
+
+  const zettel = kindIds.map(kindId => {
+    const erg = ergebnisse?.find(e => e.kind_id === kindId);
+    const best = bests?.find(b => b.kind_id === kindId);
+    const istBestleistung = erg && best && erg.richtig >= best.bestes_ergebnis;
+    return elternzettelHTML(kindId, erg, best, aufgaben, istBestleistung, tr?.name);
+  }).join('');
+
+  document.getElementById('druck-inhalt').innerHTML = zettel;
+  modalOeffnen('modal-druck');
+}
+
+function elternzettelHTML(kindId, erg, best, aufgaben, istBestleistung, testreihenName) {
+  const kindNr = erg?.kind_nummer || '?';
+  const datum = erg ? new Date(erg.created_at).toLocaleDateString('de-DE', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) : new Date().toLocaleDateString('de-DE');
+
+  const aufgabenRaster = aufgaben.slice(0, 50).map((a, i) => {
+    const antwort = erg?.antworten?.[i];
+    if (!antwort || antwort.eingabe === null) return `<div style="padding:4px;border-radius:5px;background:#f1f5f9;text-align:center;font-size:0.65rem;color:#94a3b8">${a.aufgabe}<br>–</div>`;
+    const bg = antwort.richtig ? '#dcfce7' : '#fee2e2';
+    const col = antwort.richtig ? '#16a34a' : '#dc2626';
+    return `<div style="padding:4px;border-radius:5px;background:${bg};text-align:center;font-size:0.65rem;color:${col}">${a.aufgabe}<br>${antwort.eingabe}</div>`;
+  }).join('');
+
+  return `
+    <div class="elternzettel" style="border:2px solid #2563eb;border-radius:12px;padding:14px;margin-bottom:16px;font-family:'Nunito',sans-serif">
+      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px">
+        <div>
+          <div style="font-size:1.1rem;font-weight:900;color:#2563eb">🧮 Kopfrechentest</div>
+          <div style="color:#64748b;font-size:0.78rem">${datum}</div>
+          ${testreihenName ? `<div style="color:#64748b;font-size:0.78rem">${testreihenName}</div>` : ''}
+        </div>
+        ${istBestleistung ? '<div style="background:#fbbf24;color:white;padding:3px 8px;border-radius:999px;font-weight:700;font-size:0.75rem">🌟 Neue Bestleistung!</div>' : ''}
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <div style="flex:1;background:#dbeafe;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:1.8rem;font-weight:900;color:#2563eb">${erg?.richtig ?? '–'}</div>
+          <div style="font-size:0.72rem;color:#2563eb;font-weight:600">von 100 richtig</div>
+        </div>
+        ${best ? `
+        <div style="flex:1;background:#f0fdf4;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:1.8rem;font-weight:900;color:#16a34a">${best.bestes_ergebnis}</div>
+          <div style="font-size:0.72rem;color:#16a34a;font-weight:600">Bestleistung</div>
+        </div>
+        <div style="flex:1;background:#f8fafc;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:1.8rem;font-weight:900;color:#64748b">${best.erstes_ergebnis ?? '–'}</div>
+          <div style="font-size:0.72rem;color:#64748b;font-weight:600">Erstes Ergebnis</div>
+        </div>` : ''}
+      </div>
+      <div style="font-size:0.75rem;color:#64748b;margin-bottom:6px;font-weight:700">Aufgaben (erste 50):</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:10px">${aufgabenRaster}</div>
+      <div style="border-top:1px dashed #e2e8f0;padding-top:10px;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:0.8rem;color:#64748b">
+          <strong>Unterschrift Eltern:</strong>
+          <div style="border-bottom:1px solid #94a3b8;width:130px;margin-top:6px;height:18px"></div>
+        </div>
+        <div style="font-size:0.72rem;color:#94a3b8;text-align:right">Kindnummer: ${kindNr}<br>Tests: ${best?.anzahl_tests ?? 1}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ================================================
+// CSV EXPORT
+// ================================================
+async function csvExportieren() {
+  if (!state.aktuelleErgebnisse.length) { alert('Keine Ergebnisse vorhanden.'); return; }
+  const { data: bests } = await db.from('bestleistungen').select('*').eq('testreihe_id', state.aktuellerTestLehrer.testreihe_id);
+
+  const zeilen = [
+    ['Kindnummer', 'Ergebnis', 'Bestleistung', 'Erstes Ergebnis', 'Datum'],
+    ...state.aktuelleErgebnisse.map(e => {
+      const best = bests?.find(b => b.kind_id === e.kind_id);
+      return [e.kind_nummer, e.richtig, best?.bestes_ergebnis ?? '', best?.erstes_ergebnis ?? '', new Date(e.created_at).toLocaleDateString('de-DE')];
+    })
+  ];
+
+  const csv = zeilen.map(z => z.join(';')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = `kopfrechentest_${new Date().toLocaleDateString('de-DE').replace(/\./g,'-')}.csv`;
+  a.click();
+}
+
+// ================================================
+// AUSWERTUNG / GRAPHEN
+// ================================================
+async function auswertungTestreihenLaden() {
+  const klasseId = document.getElementById('auswertung-klasse-select').value;
+  const sel = document.getElementById('auswertung-testreihe-select');
+  sel.innerHTML = '<option value="">Testreihe wählen...</option>';
+  if (!klasseId) return;
+  const { data } = await db.from('testreihen').select('*').eq('klasse_id', klasseId).eq('archiviert', false);
+  if (data) data.forEach(t => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; sel.appendChild(o); });
+}
+
+async function auswertungLaden() {
+  const testreiheId = document.getElementById('auswertung-testreihe-select').value;
+  const klasseId = document.getElementById('auswertung-klasse-select').value;
+  if (!testreiheId || !klasseId) return;
+
+  // Alle Tests dieser Testreihe
+  const { data: tests } = await db.from('tests').select('*').eq('testreihe_id', testreiheId).eq('status', 'closed').order('datum');
+  const { data: kinder } = await db.from('kinder').select('*').eq('klasse_id', klasseId).eq('aktiv', true).order('nummer');
+  const { data: testreihe } = await db.from('testreihen').select('*').eq('id', testreiheId).single();
+
+  if (!tests?.length || !kinder?.length) {
+    document.getElementById('individual-graphen').innerHTML = '<div class="alert alert-info">Noch keine abgeschlossenen Tests in dieser Testreihe.</div>';
+    return;
+  }
+
+  // Alle Ergebnisse laden
+  const testIds = tests.map(t => t.id);
+  const { data: alleErgebnisse } = await db.from('ergebnisse').select('*').in('test_id', testIds);
+
+  const labels = tests.map(t => new Date(t.datum).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' }));
+  const zielwert = testreihe?.zielwert;
+
+  // Klassengraph
+  const klassendurchschnitt = tests.map(t => {
+    const tErg = alleErgebnisse?.filter(e => e.test_id === t.id) || [];
+    if (!tErg.length) return null;
+    return Math.round(tErg.reduce((s,e) => s+e.richtig, 0) / tErg.length);
+  });
+  const klasseMin = tests.map(t => { const tErg = alleErgebnisse?.filter(e => e.test_id === t.id) || []; return tErg.length ? Math.min(...tErg.map(e=>e.richtig)) : null; });
+  const klasseMax = tests.map(t => { const tErg = alleErgebnisse?.filter(e => e.test_id === t.id) || []; return tErg.length ? Math.max(...tErg.map(e=>e.richtig)) : null; });
+
+  if (state.chartKlasse) state.chartKlasse.destroy();
+  document.getElementById('klass-graph-karte').style.display = 'block';
+  const ctxK = document.getElementById('chart-klasse').getContext('2d');
+  const datasetsKlasse = [
+    { label: 'Ø Durchschnitt', data: klassendurchschnitt, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', tension: 0.3, fill: false, pointRadius: 5 },
+    { label: 'Maximum', data: klasseMax, borderColor: '#16a34a', borderDash: [4,4], tension: 0.3, fill: false, pointRadius: 3 },
+    { label: 'Minimum', data: klasseMin, borderColor: '#dc2626', borderDash: [4,4], tension: 0.3, fill: false, pointRadius: 3 },
+  ];
+  if (zielwert) datasetsKlasse.push({ label: `Ziel (${zielwert})`, data: tests.map(() => zielwert), borderColor: '#d97706', borderDash: [6,3], pointRadius: 0, fill: false });
+
+  state.chartKlasse = new Chart(ctxK, {
+    type: 'line',
+    data: { labels, datasets: datasetsKlasse },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { min: 0, max: 100, title: { display: true, text: 'Richtige von 100' } } } }
+  });
+
+  // Individualgraphen
+  const container = document.getElementById('individual-graphen');
+  container.innerHTML = '';
+  Object.values(state.chartIndividual).forEach(c => c.destroy());
+  state.chartIndividual = {};
+
+  kinder.forEach(kind => {
+    const kindErgebnisse = tests.map(t => {
+      const erg = alleErgebnisse?.find(e => e.test_id === t.id && e.kind_id === kind.id);
+      return erg ? erg.richtig : null;
+    });
+
+    if (kindErgebnisse.every(e => e === null)) return; // Nie teilgenommen
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.marginBottom = '16px';
+    card.innerHTML = `<h2>Kind Nr. ${kind.nummer}</h2><div class="chart-container"><canvas id="chart-kind-${kind.id}"></canvas></div>`;
+    container.appendChild(card);
+
+    const ctx = document.getElementById(`chart-kind-${kind.id}`).getContext('2d');
+    const datasets = [
+      { label: `Nr. ${kind.nummer}`, data: kindErgebnisse, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.15)', tension: 0.3, fill: true, pointRadius: 5, spanGaps: false },
+    ];
+    if (zielwert) datasets.push({ label: `Ziel (${zielwert})`, data: tests.map(() => zielwert), borderColor: '#d97706', borderDash: [6,3], pointRadius: 0, fill: false });
+
+    state.chartIndividual[kind.id] = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { min: 0, max: 100 } } }
+    });
+  });
+
+  // Aufgabenstatistik
+  await aufgabenStatistikLaden(testIds, testreihe);
+}
+
+async function aufgabenStatistikLaden(testIds, testreihe) {
+  const { data: alleErgebnisse } = await db.from('ergebnisse').select('antworten').in('test_id', testIds);
+  if (!alleErgebnisse?.length || !testreihe?.aufgaben?.length) return;
+
+  const aufgaben = testreihe.aufgaben;
+  const falschZaehler = new Array(aufgaben.length).fill(0);
+  const bearbeitetZaehler = new Array(aufgaben.length).fill(0);
+
+  alleErgebnisse.forEach(e => {
+    if (!e.antworten) return;
+    e.antworten.forEach((a, i) => {
+      if (a.eingabe !== null) {
+        bearbeitetZaehler[i]++;
+        if (!a.richtig) falschZaehler[i]++;
+      }
+    });
+  });
+
+  // Top 10 schwierigste Aufgaben
+  const schwierig = aufgaben.map((a, i) => ({
+    aufgabe: a.aufgabe,
+    loesung: a.loesung,
+    falsch: falschZaehler[i],
+    bearbeitet: bearbeitetZaehler[i],
+    quote: bearbeitetZaehler[i] > 0 ? Math.round((falschZaehler[i] / bearbeitetZaehler[i]) * 100) : 0,
+  })).filter(a => a.bearbeitet > 0).sort((a,b) => b.quote - a.quote).slice(0, 10);
+
+  const karte = document.getElementById('aufgaben-statistik-karte');
+  const inhalt = document.getElementById('aufgaben-statistik-inhalt');
+  karte.style.display = 'block';
+
+  inhalt.innerHTML = `<table><thead><tr><th>Aufgabe</th><th>Falsch</th><th>Bearbeitet</th><th>Fehlerquote</th></tr></thead><tbody>
+    ${schwierig.map(a => `
+      <tr>
+        <td style="font-family:'Baloo 2',sans-serif;font-weight:700">${a.aufgabe} = ${a.loesung}</td>
+        <td style="color:var(--danger);font-weight:700">${a.falsch}</td>
+        <td>${a.bearbeitet}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;height:8px;background:var(--border);border-radius:999px;overflow:hidden">
+              <div style="height:100%;width:${a.quote}%;background:${a.quote>50?'var(--danger)':a.quote>25?'var(--warning)':'var(--success)'};border-radius:999px"></div>
+            </div>
+            <span style="font-weight:700;min-width:36px">${a.quote}%</span>
+          </div>
+        </td>
+      </tr>
+    `).join('')}
+  </tbody></table>`;
+}
+
+// ================================================
+// QR CODE
+// ================================================
+async function qrCodeAnzeigen() {
+  const klasseId = document.getElementById('qr-klasse-select').value;
+  if (!klasseId) { alert('Bitte eine Klasse auswählen.'); return; }
+  const klasse = state.alleKlassen.find(k => k.id === klasseId);
+  const url = `${APP_URL}?klasse=${encodeURIComponent(klasse.name)}`;
+
+  document.getElementById('qr-modal-titel').textContent = `QR-Code – Klasse ${klasse.name}`;
+  document.getElementById('qr-klasse-label').textContent = `Klasse ${klasse.name}`;
+  document.getElementById('qr-url-text').textContent = url;
+
+  const container = document.getElementById('qr-code-container');
+  container.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  container.appendChild(canvas);
+  QRCode.toCanvas(canvas, url, { width: 280, margin: 2 });
+
+  modalOeffnen('modal-qr');
+}
+
+// ================================================
+// START
+// ================================================
+document.addEventListener('DOMContentLoaded', () => {
+  klassenFuerStartseiteLaden();
+});
+</script>
+</body>
+</html>
