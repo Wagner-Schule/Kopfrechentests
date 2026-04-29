@@ -769,7 +769,7 @@
   </div>
 </div>
 
-<script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script>
 // ================================================
 // KONFIGURATION
@@ -2053,7 +2053,15 @@ async function aufgabenStatistikLaden(testIds, testreihe) {
 async function qrCodeAnzeigen() {
   const klasseId = document.getElementById('qr-klasse-select').value;
   if (!klasseId) { alert('Bitte eine Klasse auswählen.'); return; }
+
   const klasse = state.alleKlassen.find(k => k.id === klasseId);
+  if (!klasse) { alert('Klasse nicht gefunden. Bitte Seite neu laden.'); return; }
+
+  if (typeof QRCode === 'undefined') {
+    alert('QR-Code-Bibliothek konnte nicht geladen werden. Bitte Internetverbindung prüfen und Seite neu laden.');
+    return;
+  }
+
   const url = `${APP_URL}?klasse=${encodeURIComponent(klasse.name)}`;
 
   document.getElementById('qr-modal-titel').textContent = `QR-Code – Klasse ${klasse.name}`;
@@ -2064,7 +2072,12 @@ async function qrCodeAnzeigen() {
   container.innerHTML = '';
   const canvas = document.createElement('canvas');
   container.appendChild(canvas);
-  QRCode.toCanvas(canvas, url, { width: 280, margin: 2 });
+
+  try {
+    await QRCode.toCanvas(canvas, url, { width: 280, margin: 2 });
+  } catch (e) {
+    container.innerHTML = `<div class="alert alert-danger">QR-Code konnte nicht erstellt werden: ${e.message}</div>`;
+  }
 
   modalOeffnen('modal-qr');
 }
