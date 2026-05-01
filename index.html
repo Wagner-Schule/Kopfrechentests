@@ -613,6 +613,14 @@
             </select>
           </div>
         </div>
+        <div id="zielwert-editor" style="display:none;margin-top:12px;display:none">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <label style="margin:0">Zielwert:</label>
+            <input type="number" id="zielwert-input" min="1" max="100" style="width:80px">
+            <button class="btn btn-outline btn-sm" onclick="zielwertSpeichern()">💾 Speichern</button>
+            <span id="zielwert-status" style="font-size:0.85rem"></span>
+          </div>
+        </div>
       </div>
 
       <!-- Klassengraph -->
@@ -2078,6 +2086,21 @@ async function bestleistungNeuBerechnen(kindId, testreiheId) {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'kind_id,testreihe_id' });
 }
+async function zielwertSpeichern() {
+  const testreiheId = document.getElementById('auswertung-testreihe-select').value;
+  const neuerWert = parseInt(document.getElementById('zielwert-input').value);
+  const status = document.getElementById('zielwert-status');
+  if (!testreiheId || isNaN(neuerWert) || neuerWert < 1 || neuerWert > 100) {
+    status.innerHTML = '<span style="color:var(--danger)">Ungültiger Wert (1–100)</span>';
+    return;
+  }
+  await db.from('testreihen').update({ zielwert: neuerWert }).eq('id', testreiheId);
+  status.innerHTML = '<span style="color:var(--success)">✓ Gespeichert</span>';
+  setTimeout(() => { status.textContent = ''; }, 2000);
+  // Auswertung neu laden damit die Graphen aktualisiert werden
+  await auswertungLaden();
+}
+
 async function auswertungTestreihenLaden() {
   const klasseId = document.getElementById('auswertung-klasse-select').value;
   const sel = document.getElementById('auswertung-testreihe-select');
@@ -2109,7 +2132,12 @@ async function auswertungLaden() {
   const testIds = tests.map(t => t.id);
   const { data: alleErgebnisse } = await db.from('ergebnisse').select('*').in('test_id', testIds);
 
-  // Unbeantwortete als falsch zählen (richtig-Wert bleibt wie gespeichert, da beim Abschluss gezählt)
+  // Zielwert-Editor einblenden
+  const zielwertEditor = document.getElementById('zielwert-editor');
+  zielwertEditor.style.display = 'block';
+  document.getElementById('zielwert-input').value = testreihe?.zielwert || '';
+  document.getElementById('zielwert-status').textContent = '';
+
   const labels = tests.map(t => new Date(t.datum).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' }));
   const zielwert = testreihe?.zielwert;
 
