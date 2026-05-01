@@ -488,20 +488,22 @@
 
     <!-- TAB: AUFGABEN -->
     <div id="tab-aufgaben" class="tab-content">
+
+      <!-- Vorlagen Liste -->
       <div class="card" style="margin-bottom:16px">
-        <h2>📋 Testreihen</h2>
-        <div class="flex-row" style="margin-bottom:12px">
-          <select id="testreihe-klasse-select" onchange="testreihenLaden()" style="flex:1">
-            <option value="">Klasse wählen...</option>
-          </select>
-          <button class="btn btn-primary btn-sm" onclick="modalOeffnen('modal-testreihe')">+ Neue Testreihe</button>
+        <div class="flex-between" style="margin-bottom:14px">
+          <h2 style="margin:0">📚 Aufgaben-Vorlagen (Pool)</h2>
+          <button class="btn btn-primary btn-sm" onclick="modalOeffnen('modal-vorlage')">+ Neue Vorlage</button>
         </div>
-        <div id="testreihen-liste"><div class="info-box">Bitte eine Klasse wählen.</div></div>
+        <p style="font-size:0.85rem;margin-bottom:12px">Vorlagen sind global – nicht an eine Klasse gebunden. Pro Test werden 100 Aufgaben zufällig aus dem Pool gezogen.</p>
+        <div id="vorlagen-liste"><div class="loading">Lade Vorlagen...</div></div>
       </div>
 
+      <!-- Aufgaben bearbeiten -->
       <div class="card" id="aufgaben-karte" style="display:none">
         <div class="flex-between" style="margin-bottom:6px">
-          <h2 style="margin:0">Aufgaben für: <span id="aktuelle-testreihe-name" style="color:var(--primary)"></span></h2>
+          <h2 style="margin:0">Pool für: <span id="aktuelle-testreihe-name" style="color:var(--primary)"></span></h2>
+          <span id="pool-groesse-badge" style="font-size:0.85rem;color:var(--muted)"></span>
         </div>
 
         <!-- Paste Import -->
@@ -510,9 +512,9 @@
           <p style="font-size:0.85rem;margin-bottom:10px">
             Erstelle Aufgaben mit ChatGPT oder Claude.ai und füge sie hier ein. Eine Aufgabe pro Zeile.
             Die App berechnet Lösungen automatisch.<br>
-            <strong style="color:var(--text)">Formate:</strong> 17 + 8 &nbsp;|&nbsp; 34 - 19 &nbsp;|&nbsp; 6 × 7 &nbsp;|&nbsp; 48 ÷ 6 &nbsp;|&nbsp; 17 + 8 = 25
+            <strong style="color:var(--text)">Formate:</strong> 17 + 8 &nbsp;|&nbsp; 34 - 19 &nbsp;|&nbsp; 6 × 7 &nbsp;|&nbsp; 48 ÷ 6 &nbsp;|&nbsp; 6 · 7 &nbsp;|&nbsp; 6 x 7 &nbsp;|&nbsp; 17 + 8 = 25
           </p>
-          <textarea id="paste-aufgaben" rows="6" placeholder="17 + 8&#10;34 - 19&#10;6 × 7&#10;48 ÷ 6&#10;..."></textarea>
+          <textarea id="paste-aufgaben" rows="6" placeholder="17 + 8&#10;34 - 19&#10;6 × 7&#10;6 · 4&#10;48 ÷ 6&#10;..."></textarea>
           <div style="margin-top:8px;display:flex;gap:8px">
             <button class="btn btn-primary" onclick="aufgabenEinfuegen()">📋 Übernehmen</button>
             <button class="btn btn-ghost btn-sm" onclick="alleAufgabenLoeschen()">🗑 Alle löschen</button>
@@ -538,6 +540,18 @@
         </div>
         <div id="aufgaben-liste" class="aufgaben-list"></div>
         <div id="aufgaben-leer" class="info-box" style="display:none">Noch keine Aufgaben.</div>
+      </div>
+
+      <!-- Testreihen (klassengebunden, nur Zielwert + Vorlage-Zuweisung) -->
+      <div class="card" style="margin-top:16px">
+        <h2>📋 Testreihen</h2>
+        <div class="flex-row" style="margin-bottom:12px">
+          <select id="testreihe-klasse-select" onchange="testreihenLaden()" style="flex:1">
+            <option value="">Klasse wählen...</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="modalOeffnen('modal-testreihe')">+ Neue Testreihe</button>
+        </div>
+        <div id="testreihen-liste"><div class="info-box">Bitte eine Klasse wählen.</div></div>
       </div>
     </div>
 
@@ -670,6 +684,25 @@
   </div>
 </div>
 
+<!-- Vorlage Modal -->
+<div id="modal-vorlage" class="modal-overlay">
+  <div class="modal-box">
+    <div class="flex-between" style="margin-bottom:16px">
+      <h2 style="margin:0">Vorlage anlegen</h2>
+      <button class="btn btn-ghost btn-sm" onclick="modalSchliessen('modal-vorlage')">✕</button>
+    </div>
+    <div>
+      <label>Name (z.B. Addition bis 100)</label>
+      <input type="text" id="vorlage-name" placeholder="Addition bis 100">
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="vorlageAnlegen()">Anlegen</button>
+      <button class="btn btn-ghost" onclick="modalSchliessen('modal-vorlage')">Abbrechen</button>
+    </div>
+    <div id="vorlage-fehler"></div>
+  </div>
+</div>
+
 <!-- Testreihe Modal -->
 <div id="modal-testreihe" class="modal-overlay">
   <div class="modal-box">
@@ -685,6 +718,12 @@
       <div>
         <label>Zielwert (von 100)</label>
         <input type="number" id="testreihe-zielwert" placeholder="z.B. 40" min="1" max="100">
+      </div>
+      <div>
+        <label>Vorlage (Aufgaben-Pool)</label>
+        <select id="testreihe-vorlage-select">
+          <option value="">Vorlage wählen...</option>
+        </select>
       </div>
     </div>
     <div style="margin-top:12px;display:flex;gap:8px">
@@ -766,7 +805,9 @@ const state = {
   // Lehrer
   alleSchuljahre: [],
   alleKlassen: [],
+  alleVorlagen: [],
   aktuelleTestreihe: null,
+  aktuelleVorlage: null,
   lokaleAufgaben: [],
   aktuellerTestLehrer: null,
   aktuelleErgebnisse: [],
@@ -797,6 +838,7 @@ function modalOeffnen(id) {
   if (id === 'modal-testreihe') {
     const klasseId = document.getElementById('testreihe-klasse-select').value;
     if (!klasseId) { alert('Bitte zuerst eine Klasse auswählen.'); return; }
+    vorlagenSelectFuellen('testreihe-vorlage-select');
   }
 }
 
@@ -907,7 +949,7 @@ async function nummerWaehlen(kindId, nummer) {
   // Aktiven Test für diese Klasse suchen
   const { data: tests } = await db
     .from('tests')
-    .select('*, testreihen(aufgaben)')
+    .select('*, aufgaben')
     .eq('klasse_id', state.aktiveKlasse.id)
     .in('status', ['waiting', 'active'])
     .order('created_at', { ascending: false })
@@ -939,11 +981,11 @@ async function nummerWaehlen(kindId, nummer) {
 async function testBeginnen() {
   if (!state.aktuellerTest) return;
 
-  // Aufgaben laden
-  let aufgaben = state.aktuellerTest.testreihen?.aufgaben;
-  if (!aufgaben) {
-    const { data: tr } = await db.from('testreihen').select('aufgaben').eq('id', state.aktuellerTest.testreihe_id).single();
-    aufgaben = tr?.aufgaben || [];
+  // Aufgaben direkt vom Test laden (werden beim Vorbereiten gespeichert)
+  let aufgaben = state.aktuellerTest.aufgaben;
+  if (!aufgaben || !aufgaben.length) {
+    const { data: t } = await db.from('tests').select('aufgaben').eq('id', state.aktuellerTest.id).single();
+    aufgaben = t?.aufgaben || [];
   }
   state.aktuellerTest.aufgaben = aufgaben;
 
@@ -960,9 +1002,9 @@ async function testBeginnen() {
   state.subscription = db.channel(`test-ende-${state.kindId}`)
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tests' }, (payload) => {
       if (payload.new.id === state.aktuellerTest.id && payload.new.status === 'closed') {
-        // Alle noch nicht beantworteten Aufgaben als falsch mit Eingabe 0 markieren
+        // Alle noch nicht beantworteten Aufgaben als nicht beantwortet markieren
         state.kindAntworten = state.kindAntworten.map(a =>
-          a.eingabe === null ? { eingabe: 0, richtig: false } : a
+          a.eingabe === null ? { eingabe: null, richtig: false, nichtBeantwortet: true } : a
         );
         testAbschliessen();
       }
@@ -1053,10 +1095,10 @@ async function testAbschliessen() {
       const bestInfo = document.getElementById('bestleistung-info');
       if (!bestInfo) return;
       const istBestleistung = !best || richtig >= best.bestes_ergebnis;
-      if (istBestleistung) {
-        bestInfo.innerHTML = '<div class="bestleistung-banner">🌟 Neue persönliche Bestleistung! Super!</div>';
+      if (istBestleistung && richtig > 0) {
+        bestInfo.innerHTML = '<div class="bestleistung-banner">🌟 Neue Bestleistung! Das war super – weiter so! 🎉</div>';
       } else if (best) {
-        bestInfo.innerHTML = `<div class="alert alert-info">Deine Bestleistung: ${best.bestes_ergebnis} ⭐</div>`;
+        bestInfo.innerHTML = `<div class="alert alert-info">Deine Bestleistung: <strong>${best.bestes_ergebnis}</strong> ⭐ &nbsp;|&nbsp; Start: <strong>${best.erstes_ergebnis}</strong></div>`;
       }
     } catch (e) {
       setTimeout(syncErgebnis, 3000);
@@ -1104,6 +1146,7 @@ function lehrerLogout() {
 async function lehrerDashboardLaden() {
   await schuljahreLaden();
   await klassenLaden();
+  await vorlagenLaden();
   await aktivenTestLaden();
   klassenSelectsFuellen();
 }
@@ -1184,6 +1227,92 @@ function klassenSelectsFuellen() {
 function schuljahrSelectFuellen(selectId) {
   const el = document.getElementById(selectId);
   el.innerHTML = state.alleSchuljahre.filter(s => s.aktiv).map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+// ================================================
+// VORLAGEN
+// ================================================
+async function vorlagenLaden() {
+  const { data } = await db.from('vorlagen').select('*').order('name');
+  state.alleVorlagen = data || [];
+  renderVorlagen();
+}
+
+function renderVorlagen() {
+  const el = document.getElementById('vorlagen-liste');
+  if (!el) return;
+  if (!state.alleVorlagen.length) {
+    el.innerHTML = '<div class="info-box">Noch keine Vorlagen angelegt. Erstelle eine Vorlage und füge Aufgaben ein.</div>';
+    return;
+  }
+  el.innerHTML = `<table><thead><tr><th>Name</th><th>Aufgaben im Pool</th><th></th></tr></thead><tbody>
+    ${state.alleVorlagen.map(v => `
+      <tr>
+        <td><strong>${v.name}</strong></td>
+        <td><span style="color:${(v.aufgaben?.length||0)>=100?'var(--success)':'var(--warning)'};font-weight:700">${v.aufgaben?.length || 0} Aufgaben</span></td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="vorlageBearbeiten('${v.id}','${v.name.replace(/'/g,"\\'")}')">✏️ Aufgaben bearbeiten</button>
+          <button class="btn btn-ghost btn-sm" onclick="vorlageUmbenennen('${v.id}','${v.name.replace(/'/g,"\\'")}')">Umbenennen</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="vorlageLoeschen('${v.id}','${v.name.replace(/'/g,"\\'")}')">🗑 Löschen</button>
+        </td>
+      </tr>
+    `).join('')}
+  </tbody></table>`;
+}
+
+function vorlagenSelectFuellen(selectId) {
+  const el = document.getElementById(selectId);
+  if (!el) return;
+  el.innerHTML = '<option value="">Vorlage wählen...</option>' +
+    state.alleVorlagen.map(v => `<option value="${v.id}">${v.name} (${v.aufgaben?.length||0} Aufgaben)</option>`).join('');
+}
+
+async function vorlageAnlegen() {
+  const name = document.getElementById('vorlage-name').value.trim();
+  if (!name) { document.getElementById('vorlage-fehler').innerHTML = '<div class="alert alert-danger">Bitte einen Namen eingeben.</div>'; return; }
+  const { data, error } = await db.from('vorlagen').insert({ name, aufgaben: [] }).select().single();
+  if (error) { document.getElementById('vorlage-fehler').innerHTML = '<div class="alert alert-danger">Fehler beim Anlegen.</div>'; return; }
+  document.getElementById('vorlage-name').value = '';
+  modalSchliessen('modal-vorlage');
+  await vorlagenLaden();
+  vorlageBearbeiten(data.id, data.name);
+}
+
+async function vorlageUmbenennen(id, alterName) {
+  const neuerName = prompt('Neuer Name:', alterName);
+  if (!neuerName || neuerName.trim() === alterName) return;
+  await db.from('vorlagen').update({ name: neuerName.trim() }).eq('id', id);
+  await vorlagenLaden();
+}
+
+async function vorlageLoeschen(id, name) {
+  // Prüfen ob Testreihen diese Vorlage nutzen
+  const { data: testreihen } = await db.from('testreihen').select('id').eq('vorlage_id', id).limit(1);
+  if (testreihen?.length) {
+    alert(`Die Vorlage "${name}" wird noch von Testreihen verwendet und kann nicht gelöscht werden.`);
+    return;
+  }
+  if (!confirm(`Vorlage "${name}" mit allen ${state.alleVorlagen.find(v=>v.id===id)?.aufgaben?.length||0} Aufgaben löschen?`)) return;
+  await db.from('vorlagen').delete().eq('id', id);
+  await vorlagenLaden();
+  // Aufgaben-Karte ausblenden wenn die gelöschte Vorlage gerade bearbeitet wurde
+  if (state.aktuelleVorlage?.id === id) {
+    state.aktuelleVorlage = null;
+    state.lokaleAufgaben = [];
+    document.getElementById('aufgaben-karte').style.display = 'none';
+  }
+}
+
+async function vorlageBearbeiten(id, name) {
+  const { data } = await db.from('vorlagen').select('*').eq('id', id).single();
+  state.aktuelleVorlage = data;
+  state.aktuelleTestreihe = null; // Vorlagen sind nicht an Testreihen gebunden
+  state.lokaleAufgaben = data.aufgaben ? [...data.aufgaben] : [];
+
+  document.getElementById('aktuelle-testreihe-name').textContent = name;
+  document.getElementById('aufgaben-karte').style.display = 'block';
+  aufgabenlisteAktualisieren();
+  tabWechsel('tab-aufgaben', document.querySelectorAll('.tab')[1]);
 }
 
 // ================================================
@@ -1364,17 +1493,20 @@ async function testreihenLaden() {
   const el = document.getElementById('testreihen-liste');
   if (!klasseId) { el.innerHTML = '<div class="info-box">Bitte eine Klasse wählen.</div>'; return; }
 
-  const { data } = await db.from('testreihen').select('*').eq('klasse_id', klasseId).eq('archiviert', false).order('created_at');
+  const { data } = await db.from('testreihen').select('*, vorlagen(name, aufgaben)').eq('klasse_id', klasseId).eq('archiviert', false).order('created_at');
 
   if (!data?.length) { el.innerHTML = '<div class="info-box">Noch keine Testreihen für diese Klasse.</div>'; return; }
 
-  el.innerHTML = `<table><thead><tr><th>Name</th><th>Zielwert</th><th>Aufgaben</th><th></th></tr></thead><tbody>
+  el.innerHTML = `<table><thead><tr><th>Name</th><th>Zielwert</th><th>Vorlage</th><th></th></tr></thead><tbody>
     ${data.map(t => `
       <tr>
         <td><strong>${t.name}</strong></td>
         <td>${t.zielwert} / 100</td>
-        <td>${t.aufgaben?.length || 0}</td>
-        <td><button class="btn btn-outline btn-sm" onclick="testreiheBearbeiten('${t.id}','${t.name.replace(/'/g,"\\'")}')">Aufgaben bearbeiten</button></td>
+        <td>${t.vorlagen ? `${t.vorlagen.name} (${t.vorlagen.aufgaben?.length||0})` : '<span style="color:var(--danger)">Keine Vorlage!</span>'}</td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="testreiheUmbenennen('${t.id}','${t.name.replace(/'/g,"\\'")}')">✏️</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="testreiheLoeschen('${t.id}','${t.name.replace(/'/g,"\\'")}')">🗑</button>
+        </td>
       </tr>
     `).join('')}
   </tbody></table>`;
@@ -1384,30 +1516,36 @@ async function testreiheAnlegen() {
   const klasseId = document.getElementById('testreihe-klasse-select').value;
   const name = document.getElementById('testreihe-name').value.trim();
   const zielwert = parseInt(document.getElementById('testreihe-zielwert').value);
+  const vorlageId = document.getElementById('testreihe-vorlage-select').value;
 
-  if (!klasseId || !name || isNaN(zielwert)) {
-    document.getElementById('testreihe-fehler').innerHTML = '<div class="alert alert-danger">Bitte alle Felder ausfüllen.</div>';
+  if (!klasseId || !name || isNaN(zielwert) || !vorlageId) {
+    document.getElementById('testreihe-fehler').innerHTML = '<div class="alert alert-danger">Bitte alle Felder ausfüllen (inkl. Vorlage).</div>';
     return;
   }
 
-  await db.from('testreihen').insert({ klasse_id: klasseId, name, zielwert, aufgaben: [] });
+  await db.from('testreihen').insert({ klasse_id: klasseId, name, zielwert, vorlage_id: vorlageId, aufgaben: [] });
   document.getElementById('testreihe-name').value = '';
   document.getElementById('testreihe-zielwert').value = '';
   modalSchliessen('modal-testreihe');
   await testreihenLaden();
 }
 
-async function testreiheBearbeiten(id, name) {
-  const { data } = await db.from('testreihen').select('*').eq('id', id).single();
-  state.aktuelleTestreihe = data;
-  state.lokaleAufgaben = data.aufgaben ? [...data.aufgaben] : [];
+async function testreiheUmbenennen(id, alterName) {
+  const neuerName = prompt('Neuer Name:', alterName);
+  if (!neuerName || neuerName.trim() === alterName) return;
+  await db.from('testreihen').update({ name: neuerName.trim() }).eq('id', id);
+  await testreihenLaden();
+}
 
-  document.getElementById('aktuelle-testreihe-name').textContent = name;
-  document.getElementById('aufgaben-karte').style.display = 'block';
-  aufgabenlisteAktualisieren();
-
-  // Zum Aufgaben-Tab scrollen
-  tabWechsel('tab-aufgaben', document.querySelectorAll('.tab')[1]);
+async function testreiheLoeschen(id, name) {
+  const { data: tests } = await db.from('tests').select('id').eq('testreihe_id', id).limit(1);
+  if (tests?.length) {
+    if (!confirm(`Die Testreihe "${name}" hat noch Testdaten. Wirklich löschen?`)) return;
+  } else {
+    if (!confirm(`Testreihe "${name}" löschen?`)) return;
+  }
+  await db.from('testreihen').delete().eq('id', id);
+  await testreihenLaden();
 }
 
 // ================================================
@@ -1422,16 +1560,16 @@ function aufgabenEinfuegen() {
   const erkannt = [], fehler = [], warnungen = [];
 
   for (const zeile of zeilen) {
-    const match = zeile.replace(/\s+/g, ' ').trim().match(/^(-?\d+)\s*([+\-×\*÷:])\s*(-?\d+)(?:\s*=\s*(-?\d+))?/);
+    const match = zeile.replace(/\s+/g, ' ').trim().match(/^(-?\d+)\s*([+\-×\*÷:·x])\s*(-?\d+)(?:\s*=\s*(-?\d+))?/i);
     if (!match) { fehler.push(zeile); continue; }
 
-    const a = parseInt(match[1]), op = match[2], b = parseInt(match[3]);
+    const a = parseInt(match[1]), op = match[2].toLowerCase(), b = parseInt(match[3]);
     const mitgeliefert = match[4] !== undefined ? parseInt(match[4]) : null;
     let loesung, aufgabeText;
 
     if (op === '+') { loesung = a + b; aufgabeText = `${a} + ${b}`; }
     else if (op === '-') { loesung = a - b; aufgabeText = `${a} − ${b}`; }
-    else if (op === '×' || op === '*') { loesung = a * b; aufgabeText = `${a} × ${b}`; }
+    else if (op === '×' || op === '*' || op === '·' || op === 'x') { loesung = a * b; aufgabeText = `${a} · ${b}`; }
     else if (op === '÷' || op === ':') {
       if (b === 0 || a % b !== 0) { fehler.push(zeile + ' (nicht aufgehend)'); continue; }
       loesung = a / b; aufgabeText = `${a} ÷ ${b}`;
@@ -1482,8 +1620,8 @@ function aufgabenlisteAktualisieren() {
   const anzahl = document.getElementById('aufgaben-anzahl');
   const n = state.lokaleAufgaben.length;
 
-  anzahl.textContent = `(${n}/100)`;
-  anzahl.style.color = n === 100 ? 'var(--success)' : n > 100 ? 'var(--danger)' : 'var(--primary)';
+  anzahl.textContent = `(${n} Aufgaben im Pool)`;
+  anzahl.style.color = n >= 100 ? 'var(--success)' : n > 0 ? 'var(--warning)' : 'var(--muted)';
 
   if (!n) { liste.innerHTML = ''; leer.style.display = 'block'; return; }
   leer.style.display = 'none';
@@ -1498,13 +1636,14 @@ function aufgabenlisteAktualisieren() {
 }
 
 async function aufgabenSpeichern() {
-  if (!state.aktuelleTestreihe) return;
-  if (state.lokaleAufgaben.length !== 100) {
-    if (!confirm(`Du hast ${state.lokaleAufgaben.length} Aufgaben (empfohlen: 100). Trotzdem speichern?`)) return;
+  if (!state.aktuelleVorlage) return;
+  if (state.lokaleAufgaben.length < 100) {
+    if (!confirm(`Du hast ${state.lokaleAufgaben.length} Aufgaben im Pool (mindestens 100 empfohlen für zufällige Auswahl). Trotzdem speichern?`)) return;
   }
-  await db.from('testreihen').update({ aufgaben: state.lokaleAufgaben }).eq('id', state.aktuelleTestreihe.id);
-  state.aktuelleTestreihe.aufgaben = state.lokaleAufgaben;
-  alert('✓ Aufgaben gespeichert!');
+  await db.from('vorlagen').update({ aufgaben: state.lokaleAufgaben }).eq('id', state.aktuelleVorlage.id);
+  state.aktuelleVorlage.aufgaben = state.lokaleAufgaben;
+  await vorlagenLaden();
+  alert(`✓ Pool gespeichert! ${state.lokaleAufgaben.length} Aufgaben verfügbar.`);
 }
 
 // ================================================
@@ -1526,14 +1665,30 @@ async function testVorbereiten() {
 
   if (!klasseId || !testreiheId) { fehler.innerHTML = '<div class="alert alert-danger">Bitte Klasse und Testreihe wählen.</div>'; return; }
 
-  const { data: tr } = await db.from('testreihen').select('aufgaben').eq('id', testreiheId).single();
-  if (!tr?.aufgaben?.length) { fehler.innerHTML = '<div class="alert alert-danger">Diese Testreihe hat noch keine Aufgaben.</div>'; return; }
+  // Testreihe + verknüpfte Vorlage laden
+  const { data: tr } = await db.from('testreihen').select('*, vorlagen(aufgaben, name)').eq('id', testreiheId).single();
+  const pool = tr?.vorlagen?.aufgaben || [];
 
-  const { data: test } = await db.from('tests').insert({ klasse_id: klasseId, testreihe_id: testreiheId, status: 'waiting' }).select().single();
+  if (pool.length < 100) {
+    fehler.innerHTML = `<div class="alert alert-danger">Der Aufgaben-Pool der Vorlage hat nur ${pool.length} Aufgaben – mindestens 100 werden benötigt.</div>`;
+    return;
+  }
+
+  // 100 zufällige Aufgaben aus Pool ziehen (Fisher-Yates)
+  const gemischt = [...pool].sort(() => Math.random() - 0.5);
+  const ausgewaehlt = gemischt.slice(0, 100);
+
+  const { data: test } = await db.from('tests').insert({
+    klasse_id: klasseId,
+    testreihe_id: testreiheId,
+    status: 'waiting',
+    aufgaben: ausgewaehlt
+  }).select().single();
+
   state.aktuellerTestLehrer = test;
   fehler.innerHTML = '';
   statusAktualisieren();
-  alert('✓ Test vorbereitet! Kinder können jetzt beitreten.');
+  alert(`✓ Test vorbereitet! 100 Aufgaben zufällig aus ${pool.length} gezogen. Kinder können jetzt beitreten.`);
 }
 
 async function aktivenTestLaden() {
@@ -1763,8 +1918,10 @@ async function alleElternzettelDrucken(testId, testreiheId) {
 async function elternzettelDrucken(kindIds, testId, testreiheId) {
   const { data: ergebnisse } = await db.from('ergebnisse').select('*').eq('test_id', testId).in('kind_id', kindIds);
   const { data: bests } = await db.from('bestleistungen').select('*').in('kind_id', kindIds).eq('testreihe_id', testreiheId);
-  const { data: tr } = await db.from('testreihen').select('aufgaben,name').eq('id', testreiheId).single();
-  const aufgaben = tr?.aufgaben || [];
+  // Aufgaben vom Test selbst laden (zufällig gezogene)
+  const { data: testDaten } = await db.from('tests').select('aufgaben').eq('id', testId).single();
+  const { data: tr } = await db.from('testreihen').select('name').eq('id', testreiheId).single();
+  const aufgaben = testDaten?.aufgaben || [];
 
   const zettel = kindIds.map(kindId => {
     const erg = ergebnisse?.find(e => e.kind_id === kindId);
@@ -1811,9 +1968,10 @@ function elternzettelHTML(kindId, erg, best, aufgaben, istBestleistung, testreih
         </div>
         <div style="flex:1;background:#f8fafc;border-radius:8px;padding:10px;text-align:center">
           <div style="font-size:2rem;font-weight:900;color:#64748b;line-height:1">${best.erstes_ergebnis ?? '–'}</div>
-          <div style="font-size:0.72rem;color:#64748b;font-weight:600">Erstes Ergebnis</div>
+          <div style="font-size:0.72rem;color:#64748b;font-weight:600">Startergebnis</div>
         </div>` : ''}
       </div>
+      ${istBestleistung ? '<div style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:white;border-radius:8px;padding:10px;text-align:center;font-weight:700;font-size:0.95rem;margin-bottom:10px">🌟 Neue Bestleistung! Das war super – weiter so! 🎉</div>' : ''}
       <div style="font-size:0.75rem;color:#64748b;margin-bottom:5px;font-weight:700">Alle Aufgaben (${aufgaben.length}):</div>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-bottom:12px">${aufgabenRaster}</div>
       <div style="border-top:1px dashed #e2e8f0;padding-top:10px;display:flex;justify-content:space-between;align-items:center">
@@ -1938,9 +2096,12 @@ async function auswertungLaden() {
   const { data: tests } = await db.from('tests').select('*').eq('testreihe_id', testreiheId).eq('status', 'closed').order('datum');
   const { data: kinder } = await db.from('kinder').select('*').eq('klasse_id', klasseId).eq('aktiv', true).order('nummer');
   const { data: testreihe } = await db.from('testreihen').select('*').eq('id', testreiheId).single();
+  const { data: bestleistungen } = await db.from('bestleistungen').select('*').eq('testreihe_id', testreiheId);
 
   if (!tests?.length || !kinder?.length) {
     document.getElementById('individual-graphen').innerHTML = '<div class="alert alert-info">Noch keine abgeschlossenen Tests in dieser Testreihe.</div>';
+    document.getElementById('klass-graph-karte').style.display = 'none';
+    document.getElementById('aufgaben-statistik-karte').style.display = 'none';
     return;
   }
 
@@ -1948,8 +2109,44 @@ async function auswertungLaden() {
   const testIds = tests.map(t => t.id);
   const { data: alleErgebnisse } = await db.from('ergebnisse').select('*').in('test_id', testIds);
 
+  // Unbeantwortete als falsch zählen (richtig-Wert bleibt wie gespeichert, da beim Abschluss gezählt)
   const labels = tests.map(t => new Date(t.datum).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' }));
   const zielwert = testreihe?.zielwert;
+
+  // === BESTLEISTUNGS-TABELLE ===
+  const teilnehmendeKinder = kinder.filter(k => bestleistungen?.find(b => b.kind_id === k.id));
+  const bltContainer = document.getElementById('individual-graphen');
+  let bltHTML = '';
+  if (teilnehmendeKinder.length) {
+    bltHTML = `<div class="card" style="margin-bottom:16px">
+      <h2>🏆 Bestleistungen & Startpunkte</h2>
+      <p style="font-size:0.85rem;margin-bottom:12px">Schaffst du es, deine Bestleistung zu übertreffen? 💪</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Nr.</th>
+            <th>Startergebnis</th>
+            <th>Bestleistung</th>
+            <th>Verbesserung</th>
+            <th>Tests</th>
+          </tr></thead>
+          <tbody>
+            ${teilnehmendeKinder.map(k => {
+              const best = bestleistungen.find(b => b.kind_id === k.id);
+              const verbesserung = best ? best.bestes_ergebnis - best.erstes_ergebnis : null;
+              return `<tr>
+                <td><strong>Nr. ${k.nummer}</strong></td>
+                <td>${best?.erstes_ergebnis ?? '–'}</td>
+                <td><strong style="color:var(--success)">${best?.bestes_ergebnis ?? '–'}</strong></td>
+                <td>${verbesserung !== null ? `<span style="color:${verbesserung>0?'var(--success)':verbesserung<0?'var(--danger)':'var(--muted)'};font-weight:700">${verbesserung>0?'+':''}${verbesserung}</span>` : '–'}</td>
+                <td>${best?.anzahl_tests ?? 0}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
 
   // Klassengraph
   const klassendurchschnitt = tests.map(t => {
@@ -1977,8 +2174,7 @@ async function auswertungLaden() {
   });
 
   // Individualgraphen
-  const container = document.getElementById('individual-graphen');
-  container.innerHTML = '';
+  bltContainer.innerHTML = bltHTML;
   Object.values(state.chartIndividual).forEach(c => c.destroy());
   state.chartIndividual = {};
 
@@ -1988,19 +2184,26 @@ async function auswertungLaden() {
       return erg ? erg.richtig : null;
     });
 
-    if (kindErgebnisse.every(e => e === null)) return; // Nie teilgenommen
+    if (kindErgebnisse.every(e => e === null)) return;
 
+    const best = bestleistungen?.find(b => b.kind_id === kind.id);
     const card = document.createElement('div');
     card.className = 'card';
     card.style.marginBottom = '16px';
-    card.innerHTML = `<h2>Kind Nr. ${kind.nummer}</h2><div class="chart-container"><canvas id="chart-kind-${kind.id}"></canvas></div>`;
-    container.appendChild(card);
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <h2 style="margin:0">Kind Nr. ${kind.nummer}</h2>
+        ${best ? `<div style="font-size:0.82rem;color:var(--muted)">Start: <strong>${best.erstes_ergebnis}</strong> &nbsp;|&nbsp; Beste: <strong style="color:var(--success)">${best.bestes_ergebnis}</strong></div>` : ''}
+      </div>
+      <div class="chart-container"><canvas id="chart-kind-${kind.id}"></canvas></div>`;
+    bltContainer.appendChild(card);
 
     const ctx = document.getElementById(`chart-kind-${kind.id}`).getContext('2d');
     const datasets = [
       { label: `Nr. ${kind.nummer}`, data: kindErgebnisse, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.15)', tension: 0.3, fill: true, pointRadius: 5, spanGaps: false },
     ];
     if (zielwert) datasets.push({ label: `Ziel (${zielwert})`, data: tests.map(() => zielwert), borderColor: '#d97706', borderDash: [6,3], pointRadius: 0, fill: false });
+    if (best) datasets.push({ label: `Bestleistung (${best.bestes_ergebnis})`, data: tests.map(() => best.bestes_ergebnis), borderColor: '#16a34a', borderDash: [4,4], pointRadius: 0, fill: false });
 
     state.chartIndividual[kind.id] = new Chart(ctx, {
       type: 'line',
@@ -2009,23 +2212,29 @@ async function auswertungLaden() {
     });
   });
 
-  // Aufgabenstatistik
-  await aufgabenStatistikLaden(testIds, testreihe);
+  // Aufgabenstatistik (pro letztem Test, da jeder Test andere Aufgaben hat)
+  if (tests.length) {
+    const letzterTest = tests[tests.length - 1];
+    const { data: letzterTestDaten } = await db.from('tests').select('aufgaben').eq('id', letzterTest.id).single();
+    if (letzterTestDaten?.aufgaben?.length) {
+      await aufgabenStatistikLaden([letzterTest.id], { aufgaben: letzterTestDaten.aufgaben });
+    }
+  }
 }
 
 async function aufgabenStatistikLaden(testIds, testreihe) {
   const { data: alleErgebnisse } = await db.from('ergebnisse').select('antworten').in('test_id', testIds);
-  if (!alleErgebnisse?.length || !testreihe?.aufgaben?.length) return;
-
-  const aufgaben = testreihe.aufgaben;
+  const aufgaben = testreihe?.aufgaben;
+  if (!alleErgebnisse?.length || !aufgaben?.length) return;
   const falschZaehler = new Array(aufgaben.length).fill(0);
   const bearbeitetZaehler = new Array(aufgaben.length).fill(0);
 
   alleErgebnisse.forEach(e => {
     if (!e.antworten) return;
     e.antworten.forEach((a, i) => {
-      if (a.eingabe !== null) {
+      if (i < aufgaben.length) {
         bearbeitetZaehler[i]++;
+        // Nicht beantwortet (nichtBeantwortet:true oder eingabe===null) = falsch
         if (!a.richtig) falschZaehler[i]++;
       }
     });
