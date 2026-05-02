@@ -348,7 +348,7 @@
   <div class="card" style="width:100%;max-width:500px">
     <div id="nummern-raster" class="nummern-grid"></div>
   </div>
-  <button class="btn btn-ghost btn-sm" onclick="zurueckZuKlassen()">← Zurück</button>
+  <button class="btn btn-outline" style="max-width:500px;font-size:1.1rem;padding:16px" onclick="zurueckZuKlassen()">← Falsche Klasse? Zurück</button>
 </div>
 
 <!-- ===== SCREEN: KIND - WARTEN ===== -->
@@ -363,6 +363,7 @@
       <div class="warte-dot"></div>
     </div>
   </div>
+  <button class="btn btn-outline" style="max-width:440px;font-size:1.1rem;padding:16px" onclick="wartenAbbrechen()">← Falsche Nummer? Zurück</button>
 </div>
 
 <!-- ===== SCREEN: KIND - TEST ===== -->
@@ -401,7 +402,10 @@
     <div id="bestleistung-info" style="margin-top:16px"></div>
   </div>
   <div class="card" style="text-align:center;max-width:440px;width:100%">
-    <p style="color:var(--muted)">Warte auf deine Lehrkraft. 😊</p>
+    <p style="color:var(--muted);margin-bottom:16px">Warte auf deine Lehrkraft. 😊</p>
+    <button class="btn btn-danger" onclick="tabSchliessen()" style="font-size:1.1rem;padding:16px">
+      🔒 Ergebnis verbergen & beenden
+    </button>
   </div>
 </div>
 
@@ -598,7 +602,10 @@
 
       <!-- Auswahl -->
       <div class="card" style="margin-bottom:16px">
-        <h2>📈 Auswertung</h2>
+        <div class="flex-between" style="margin-bottom:14px">
+          <h2 style="margin:0">📈 Auswertung</h2>
+          <button class="btn btn-ghost btn-sm" onclick="auswertungLaden()">↻ Aktualisieren</button>
+        </div>
         <div class="grid-2">
           <div>
             <label>Klasse</label>
@@ -927,6 +934,31 @@ async function klasseWaehlen(klasse) {
 function zurueckZuKlassen() {
   state.aktiveKlasse = null;
   zeige('screen-start');
+}
+
+async function wartenAbbrechen() {
+  // Nummer aus belegten_nummern entfernen
+  if (state.aktuellerTest && state.kindId) {
+    const { data: testDaten } = await db.from('tests').select('belegte_nummern').eq('id', state.aktuellerTest.id).single().catch(() => ({ data: null }));
+    if (testDaten) {
+      const belegte = (testDaten.belegte_nummern || []).filter(id => id !== state.kindId);
+      await db.from('tests').update({ belegte_nummern: belegte }).eq('id', state.aktuellerTest.id).catch(() => {});
+    }
+  }
+  if (state.subscription) { state.subscription.unsubscribe(); state.subscription = null; }
+  state.kindId = null;
+  state.kindNummer = null;
+  state.aktuellerTest = null;
+  zeige('screen-kind-nummer');
+}
+
+function tabSchliessen() {
+  // Ergebnis verbergen – zur Startseite navigieren ohne Zurück-Möglichkeit
+  if (state.subscription) { state.subscription.unsubscribe(); state.subscription = null; }
+  state.kindId = null;
+  state.kindNummer = null;
+  state.aktuellerTest = null;
+  window.location.replace(APP_URL);
 }
 
 // ================================================
