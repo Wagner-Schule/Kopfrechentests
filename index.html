@@ -683,6 +683,11 @@
         <label>Anzahl Kinder</label>
         <input type="number" id="klasse-anzahl" placeholder="25" min="1" max="60">
       </div>
+      <div>
+        <label>Emoji</label>
+        <div id="emoji-auswahl" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px"></div>
+        <input type="hidden" id="klasse-emoji" value="🦁">
+      </div>
     </div>
     <div style="margin-top:12px;display:flex;gap:8px">
       <button class="btn btn-primary" onclick="klasseAnlegen()">Anlegen</button>
@@ -842,7 +847,7 @@ function tabWechsel(tabId, btn) {
 
 function modalOeffnen(id) {
   document.getElementById(id).classList.add('active');
-  if (id === 'modal-klasse') schuljahrSelectFuellen('klasse-schuljahr-select');
+  if (id === 'modal-klasse') { schuljahrSelectFuellen('klasse-schuljahr-select'); emojiAuswahlRender('emoji-auswahl', 'klasse-emoji'); }
   if (id === 'modal-testreihe') {
     const klasseId = document.getElementById('testreihe-klasse-select').value;
     if (!klasseId) { alert('Bitte zuerst eine Klasse auswählen.'); return; }
@@ -887,7 +892,7 @@ async function klassenFuerStartseiteLaden() {
   const emojis = ['🦁','🐯','🦊','🐻','🐼','🦄','🐸','🐧','🦋','🌟'];
   document.getElementById('klassen-grid').innerHTML = klassen.map((k, i) => `
     <div class="klasse-kachel" onclick="klasseWaehlen(${JSON.stringify(k).replace(/"/g, '&quot;')})">
-      <div class="kachel-icon">${emojis[i % emojis.length]}</div>
+      <div class="kachel-icon">${k.emoji || emojis[i % emojis.length]}</div>
       ${k.name}
     </div>
   `).join('');
@@ -938,17 +943,22 @@ async function nummerWaehlen(kindId, nummer) {
     .limit(1);
 
   if (aktiverTest?.length) {
-    const { data: belegt } = await db
-      .from('ergebnisse')
-      .select('id')
-      .eq('test_id', aktiverTest[0].id)
-      .eq('kind_id', kindId)
-      .limit(1);
+    const { data: testDaten } = await db
+      .from('tests')
+      .select('belegte_nummern')
+      .eq('id', aktiverTest[0].id)
+      .single();
 
-    if (belegt?.length) {
+    const belegte = testDaten?.belegte_nummern || [];
+    if (belegte.includes(kindId)) {
       alert('🛑 STOPP! Diese Nummer ist bereits belegt. Bitte wähle eine andere Nummer oder warte auf deine Lehrkraft.');
       return;
     }
+
+    // Nummer als belegt markieren
+    await db.from('tests').update({
+      belegte_nummern: [...belegte, kindId]
+    }).eq('id', aktiverTest[0].id);
   }
 
   state.kindId = kindId;
@@ -1205,11 +1215,11 @@ function renderKlassen() {
   el.innerHTML = `<table><thead><tr><th>Klasse</th><th>Schuljahr</th><th>Status</th><th></th></tr></thead><tbody>
     ${[...aktive, ...archiviert].map(k => `
       <tr>
-        <td><strong>${k.name}</strong></td>
+        <td><strong>${k.emoji || '🏫'} ${k.name}</strong></td>
         <td>${k.schuljahre?.name || '–'}</td>
         <td>${k.archiviert ? '<span class="badge badge-closed">Archiviert</span>' : '<span class="badge badge-active">Aktiv</span>'}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="klasseUmbenennen('${k.id}','${k.name.replace(/'/g,"\\'")}')">✏️ Umbenennen</button>
+          <button class="btn btn-ghost btn-sm" onclick="klasseUmbenennen('${k.id}','${k.name.replace(/'/g,"\\'")}','${k.emoji||'🦁'}')">✏️ Umbenennen</button>
           ${!k.archiviert ? `<button class="btn btn-outline btn-sm" onclick="schuljahreswechselModal('${k.id}')">→ Neues SJ</button>` : ''}
           <button class="btn btn-ghost btn-sm" onclick="klasseToggle('${k.id}',${k.archiviert})">${k.archiviert ? 'Aktivieren' : 'Archivieren'}</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="klasseLoeschen('${k.id}','${k.name.replace(/'/g,"\\'")}')">🗑 Löschen</button>
@@ -1324,6 +1334,27 @@ async function vorlageBearbeiten(id, name) {
 }
 
 // ================================================
+// EMOJI AUSWAHL
+// ================================================
+const KLASSEN_EMOJIS = ['🦁','🐯','🦊','🐻','🐼','🦄','🐸','🐧','🦋','🌟','🚀','🎨','⚽','🎵','🌈','🦕','🐬','🦉','🐺','🎯'];
+
+function emojiAuswahlRender(containerId, hiddenInputId, aktuellesEmoji) {
+  const container = document.getElementById(containerId);
+  const hidden = document.getElementById(hiddenInputId);
+  const ausgewaehlt = aktuellesEmoji || hidden?.value || KLASSEN_EMOJIS[0];
+  if (hidden) hidden.value = ausgewaehlt;
+  container.innerHTML = KLASSEN_EMOJIS.map(e => `
+    <button type="button" onclick="emojiWaehlen('${containerId}','${hiddenInputId}','${e}')"
+      style="font-size:1.5rem;width:44px;height:44px;border-radius:10px;border:2px solid ${e===ausgewaehlt?'var(--primary)':'var(--border)'};background:${e===ausgewaehlt?'var(--primary-light)':'white'};cursor:pointer;transition:all 0.15s">${e}</button>
+  `).join('');
+}
+
+function emojiWaehlen(containerId, hiddenInputId, emoji) {
+  document.getElementById(hiddenInputId).value = emoji;
+  emojiAuswahlRender(containerId, hiddenInputId, emoji);
+}
+
+// ================================================
 // SCHULJAHR ANLEGEN
 // ================================================
 async function schuljahrAnlegen() {
@@ -1368,15 +1399,15 @@ async function klasseAnlegen() {
   const schuljahrId = document.getElementById('klasse-schuljahr-select').value;
   const name = document.getElementById('klasse-name').value.trim();
   const anzahl = parseInt(document.getElementById('klasse-anzahl').value);
+  const emoji = document.getElementById('klasse-emoji').value || '🦁';
 
   if (!schuljahrId || !name || isNaN(anzahl)) {
     document.getElementById('klasse-fehler').innerHTML = '<div class="alert alert-danger">Bitte alle Felder ausfüllen.</div>';
     return;
   }
 
-  const { data: klasse } = await db.from('klassen').insert({ schuljahr_id: schuljahrId, name }).select().single();
+  const { data: klasse } = await db.from('klassen').insert({ schuljahr_id: schuljahrId, name, emoji }).select().single();
 
-  // Kinder anlegen
   const kinderData = Array.from({ length: anzahl }, (_, i) => ({ klasse_id: klasse.id, nummer: i + 1, aktiv: true }));
   await db.from('kinder').insert(kinderData);
 
@@ -1385,6 +1416,7 @@ async function klasseAnlegen() {
   modalSchliessen('modal-klasse');
   await klassenLaden();
   klassenSelectsFuellen();
+  await klassenFuerStartseiteLaden();
 }
 
 async function klasseToggle(id, archiviert) {
@@ -1393,10 +1425,34 @@ async function klasseToggle(id, archiviert) {
   klassenSelectsFuellen();
 }
 
-async function klasseUmbenennen(id, alterName) {
+async function klasseUmbenennen(id, alterName, altesEmoji) {
+  // Kleines inline-Modal aufbauen
   const neuerName = prompt('Neuer Name für die Klasse:', alterName);
-  if (!neuerName || neuerName.trim() === alterName) return;
-  await db.from('klassen').update({ name: neuerName.trim() }).eq('id', id);
+  if (!neuerName || neuerName.trim() === '') return;
+
+  // Emoji-Auswahl per eigenem Dialog
+  const emojiContainer = document.createElement('div');
+  emojiContainer.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px';
+  emojiContainer.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:24px;max-width:400px;width:100%">
+      <h3 style="margin-bottom:12px">Emoji wählen</h3>
+      <div id="emoji-auswahl-umbenennen" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+      <input type="hidden" id="klasse-emoji-umbenennen" value="${altesEmoji || '🦁'}">
+      <div style="display:flex;gap:8px">
+        <button onclick="emojiUmbenennenBestaetigen('${id}','${neuerName.trim().replace(/'/g,"\\'")}',this)" 
+          style="flex:1;padding:12px;background:var(--primary);color:white;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-family:Nunito,sans-serif">Speichern</button>
+        <button onclick="this.closest('div[style*=fixed]').remove()"
+          style="padding:12px 20px;background:white;border:2px solid var(--border);border-radius:10px;cursor:pointer;font-family:Nunito,sans-serif">Abbrechen</button>
+      </div>
+    </div>`;
+  document.body.appendChild(emojiContainer);
+  emojiAuswahlRender('emoji-auswahl-umbenennen', 'klasse-emoji-umbenennen', altesEmoji || '🦁');
+}
+
+async function emojiUmbenennenBestaetigen(id, neuerName, btn) {
+  const emoji = document.getElementById('klasse-emoji-umbenennen').value;
+  btn.closest('div[style*=fixed]').remove();
+  await db.from('klassen').update({ name: neuerName, emoji }).eq('id', id);
   await klassenLaden();
   klassenSelectsFuellen();
   await klassenFuerStartseiteLaden();
@@ -1704,9 +1760,10 @@ async function aktivenTestLaden() {
   if (data?.length) state.aktuellerTestLehrer = data[0];
   statusAktualisieren();
 
-  // Realtime für Teilnehmer
+  // Realtime für Teilnehmer – nur während Test läuft
   db.channel('lehrer-ergebnisse')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'ergebnisse' }, () => {
+      if (!state.aktuellerTestLehrer || state.aktuellerTestLehrer.status === 'closed') return;
       teilnehmerZaehlen();
       if (document.getElementById('tab-ergebnisse').classList.contains('active')) ergebnisseAktualisieren();
     })
@@ -1760,9 +1817,22 @@ async function testStarten() {
 async function testStoppen() {
   if (!state.aktuellerTestLehrer) return;
   if (!confirm('Test für alle Kinder beenden?')) return;
-  await db.from('tests').update({ status: 'closed' }).eq('id', state.aktuellerTestLehrer.id);
+
+  const testId = state.aktuellerTestLehrer.id;
+  const testreiheId = state.aktuellerTestLehrer.testreihe_id;
+
+  await db.from('tests').update({ status: 'closed' }).eq('id', testId);
   state.aktuellerTestLehrer.status = 'closed';
   statusAktualisieren();
+
+  // Bestleistungen für alle teilgenommenen Kinder berechnen
+  const { data: ergebnisse } = await db.from('ergebnisse').select('kind_id, richtig').eq('test_id', testId);
+  if (ergebnisse?.length) {
+    for (const erg of ergebnisse) {
+      await bestleistungNeuBerechnen(erg.kind_id, testreiheId);
+    }
+  }
+
   await ergebnisseAktualisieren();
   tabWechsel('tab-ergebnisse', document.querySelectorAll('.tab')[3]);
 }
