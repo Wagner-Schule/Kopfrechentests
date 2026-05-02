@@ -937,12 +937,19 @@ function zurueckZuKlassen() {
 }
 
 async function wartenAbbrechen() {
-  // Nummer aus belegten_nummern entfernen
-  if (state.aktuellerTest && state.kindId) {
-    const { data: testDaten } = await db.from('tests').select('belegte_nummern').eq('id', state.aktuellerTest.id).single().catch(() => ({ data: null }));
+  // Nummer aus belegte_nummern entfernen – Test direkt aus DB laden
+  if (state.kindId && state.aktiveKlasse) {
+    const { data: testDaten } = await db.from('tests')
+      .select('id, belegte_nummern')
+      .eq('klasse_id', state.aktiveKlasse.id)
+      .in('status', ['waiting', 'active'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single().catch(() => ({ data: null }));
+
     if (testDaten) {
       const belegte = (testDaten.belegte_nummern || []).filter(id => id !== state.kindId);
-      await db.from('tests').update({ belegte_nummern: belegte }).eq('id', state.aktuellerTest.id).catch(() => {});
+      await db.from('tests').update({ belegte_nummern: belegte }).eq('id', testDaten.id).catch(() => {});
     }
   }
   if (state.subscription) { state.subscription.unsubscribe(); state.subscription = null; }
@@ -965,33 +972,30 @@ function tabSchliessen() {
 // KIND - FLOW
 // ================================================
 async function nummerWaehlen(kindId, nummer) {
-  // Prüfen ob Nummer bereits in aktivem Test belegt ist
+  // Prüfen ob überhaupt ein Test bereit ist
   const { data: aktiverTest } = await db
     .from('tests')
-    .select('id')
+    .select('id, belegte_nummern')
     .eq('klasse_id', state.aktiveKlasse.id)
     .in('status', ['waiting', 'active'])
     .order('created_at', { ascending: false })
     .limit(1);
 
-  if (aktiverTest?.length) {
-    const { data: testDaten } = await db
-      .from('tests')
-      .select('belegte_nummern')
-      .eq('id', aktiverTest[0].id)
-      .single();
-
-    const belegte = testDaten?.belegte_nummern || [];
-    if (belegte.includes(kindId)) {
-      alert('🛑 STOPP! Diese Nummer ist bereits belegt. Bitte wähle eine andere Nummer oder warte auf deine Lehrkraft.');
-      return;
-    }
-
-    // Nummer als belegt markieren
-    await db.from('tests').update({
-      belegte_nummern: [...belegte, kindId]
-    }).eq('id', aktiverTest[0].id);
+  if (!aktiverTest?.length) {
+    alert('⏳ Noch kein Test bereit. Warte bis deine Lehrkraft einen Test vorbereitet hat.');
+    return;
   }
+
+  const belegte = aktiverTest[0].belegte_nummern || [];
+  if (belegte.includes(kindId)) {
+    alert('🛑 STOPP! Diese Nummer ist bereits belegt. Bitte wähle eine andere Nummer oder warte auf deine Lehrkraft.');
+    return;
+  }
+
+  // Nummer als belegt markieren
+  await db.from('tests').update({
+    belegte_nummern: [...belegte, kindId]
+  }).eq('id', aktiverTest[0].id);
 
   state.kindId = kindId;
   state.kindNummer = nummer;
