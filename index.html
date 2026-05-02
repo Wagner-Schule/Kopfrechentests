@@ -584,7 +584,19 @@
         <div class="info-box">
           <strong>Ablauf:</strong> Test vorbereiten → Freigeben (Kinder können beitreten) → Starten (Timer läuft) → Beenden
         </div>
+
+        <div id="belegte-nummern-karte" style="display:none;margin-top:16px">
+          <hr class="divider">
+          <div class="flex-between" style="margin-bottom:10px">
+            <h3 style="margin:0">Belegte Nummern</h3>
+            <button class="btn btn-ghost btn-sm" onclick="belegteNummernLaden()">↻</button>
+          </div>
+          <p style="font-size:0.85rem;color:var(--muted);margin-bottom:10px">Klick auf eine Nummer um sie freizugeben (z.B. wenn ein Kind den Browser geschlossen hat).</p>
+          <div id="belegte-nummern-liste" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
       </div>
+
+    </div>
 
     </div>
 
@@ -1841,7 +1853,51 @@ function statusAktualisieren() {
   btnStop.disabled = test.status !== 'active';
 
   teilnehmerZaehlen();
+  belegteNummernLaden();
 }
+
+async function belegteNummernLaden() {
+  const karte = document.getElementById('belegte-nummern-karte');
+  const liste = document.getElementById('belegte-nummern-liste');
+  const test = state.aktuellerTestLehrer;
+
+  if (!test || test.status === 'closed') {
+    karte.style.display = 'none';
+    return;
+  }
+
+  karte.style.display = 'block';
+
+  const { data: testDaten } = await db.from('tests').select('belegte_nummern').eq('id', test.id).single();
+  const belegte = testDaten?.belegte_nummern || [];
+
+  if (!belegte.length) {
+    liste.innerHTML = '<span style="color:var(--muted);font-size:0.88rem">Noch keine Nummern belegt.</span>';
+    return;
+  }
+
+  // Kind-Nummern zu den IDs laden
+  const { data: kinder } = await db.from('kinder').select('id, nummer').in('id', belegte);
+
+  liste.innerHTML = (kinder || []).map(k => `
+    <div style="display:flex;align-items:center;gap:6px;background:var(--primary-light);border-radius:8px;padding:6px 10px">
+      <span style="font-family:'Baloo 2',sans-serif;font-weight:800;color:var(--primary)">Nr. ${k.nummer}</span>
+      <button onclick="nummerFreigeben('${k.id}')" 
+        style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;padding:0 2px" 
+        title="Freigeben">✕</button>
+    </div>
+  `).join('');
+}
+
+async function nummerFreigeben(kindId) {
+  const test = state.aktuellerTestLehrer;
+  if (!test) return;
+  const { data: testDaten } = await db.from('tests').select('belegte_nummern').eq('id', test.id).single();
+  const belegte = (testDaten?.belegte_nummern || []).filter(id => id !== kindId);
+  await db.from('tests').update({ belegte_nummern: belegte }).eq('id', test.id);
+  await belegteNummernLaden();
+}
+
 
 async function testFreigeben() {
   // Freigeben = Kinder können beitreten (status bleibt waiting, aber wir zeigen es an)
