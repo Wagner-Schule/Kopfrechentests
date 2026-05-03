@@ -1918,15 +1918,43 @@ async function testStoppen() {
 
   const testId = state.aktuellerTestLehrer.id;
   const testreiheId = state.aktuellerTestLehrer.testreihe_id;
+  const klasseId = state.aktuellerTestLehrer.klasse_id;
 
   await db.from('tests').update({ status: 'closed' }).eq('id', testId);
   state.aktuellerTestLehrer.status = 'closed';
   statusAktualisieren();
 
-  // Bestleistungen für alle teilgenommenen Kinder berechnen
-  const { data: ergebnisse } = await db.from('ergebnisse').select('kind_id, richtig').eq('test_id', testId);
-  if (ergebnisse?.length) {
-    for (const erg of ergebnisse) {
+  // Kurz warten damit Kind-Browser ihre Ergebnisse noch schreiben können
+  await new Promise(r => setTimeout(r, 3000));
+
+  // Alle beigetretenen Kinder (belegte_nummern) die noch kein Ergebnis haben → 0 eintragen
+  const { data: testDaten } = await db.from('tests').select('belegte_nummern').eq('id', testId).single();
+  const belegte = testDaten?.belegte_nummern || [];
+  const { data: vorhandene } = await db.from('ergebnisse').select('kind_id').eq('test_id', testId);
+  const vorhandeneIds = new Set(vorhandene?.map(e => e.kind_id) || []);
+
+  for (const kindId of belegte) {
+    if (!vorhandeneIds.has(kindId)) {
+      // Kind war dabei aber hat kein Ergebnis geschrieben → 0 eintragen
+      const { data: kind } = await db.from('kinder').select('nummer').eq('id', kindId).single().catch(() => ({ data: null }));
+      if (kind) {
+        await db.from('ergebnisse').upsert({
+          test_id: testId,
+          kind_id: kindId,
+          kind_nummer: kind.nummer,
+          antworten: [],
+          richtig: 0,
+          gesamt: 100,
+          abgeschlossen: true,
+        }, { onConflict: 'test_id,kind_id' });
+      }
+    }
+  }
+
+  // Bestleistungen für alle Kinder mit Ergebnis berechnen
+  const { data: alleErgebnisse } = await db.from('ergebnisse').select('kind_id').eq('test_id', testId);
+  if (alleErgebnisse?.length) {
+    for (const erg of alleErgebnisse) {
       await bestleistungNeuBerechnen(erg.kind_id, testreiheId);
     }
   }
